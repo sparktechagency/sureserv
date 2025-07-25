@@ -1,11 +1,13 @@
 import Review from '../models/review.model.js';
 import Service from '../models/service.model.js';
+import Provider from '../models/provider.model.js';
 
 // Create a new review
 export const createReview = async (req, res) => {
   try {
     const { service: serviceId, rating, comment } = req.body;
     const customerId = req.user.id; // Assuming req.user.id is populated by authentication middleware
+    console.log('Creating review for service:', serviceId, 'by customer:', customerId);
 
     const service = await Service.findById(serviceId);
 
@@ -22,10 +24,13 @@ export const createReview = async (req, res) => {
     const review = await Review.create({
       service: serviceId,
       customer: customerId,
-      provider: service.providerId, // Assuming service model has providerId
+      provider: service.providerId,
       rating,
       comment,
     });
+
+    // Update provider's average rating and number of reviews
+    await calculateAverageRating(service.providerId);
 
     res.status(201).json({
       success: true,
@@ -35,6 +40,35 @@ export const createReview = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Helper function to calculate average rating
+async function calculateAverageRating(providerId) {
+  const stats = await Review.aggregate([
+    {
+      $match: { provider: providerId }
+    },
+    {
+      $group: {
+        _id: '$provider',
+        averageRating: { $avg: '$rating' },
+        numberOfReviews: { $sum: 1 }
+      }
+    }
+  ]);
+
+  if (stats.length > 0) {
+    await Provider.findByIdAndUpdate(providerId, {
+      averageRating: stats[0].averageRating,
+      numberOfReviews: stats[0].numberOfReviews
+    });
+  } else {
+    // If no reviews, reset to default
+    await Provider.findByIdAndUpdate(providerId, {
+      averageRating: 0,
+      numberOfReviews: 0
+    });
+  }
+}
 
 // Get all reviews
 export const getReviews = async (req, res) => {
@@ -87,6 +121,9 @@ export const updateReview = async (req, res) => {
       runValidators: true,
     });
 
+    // Recalculate average rating after update
+    await calculateAverageRating(review.provider);
+
     res.status(200).json({
       success: true,
       data: review,
@@ -110,7 +147,8 @@ export const deleteReview = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized to delete this review' });
     }
 
-    await review.remove();
+    await review.deleteOne();
+    await calculateAverageRating(review.provider);
 
     res.status(200).json({
       success: true,

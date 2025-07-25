@@ -94,7 +94,7 @@ export const deleteAddress = async (req, res) => {
       await user.save();
     }
 
-    await address.remove();
+    await address.deleteOne();
     res.json({ message: 'Address deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });

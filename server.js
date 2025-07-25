@@ -12,6 +12,7 @@ import providerRoutes from './routes/provider.routes.js';
 import addressRoutes from './routes/address.routes.js';
 import serviceRoutes from './routes/service.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
+import { stripeWebhook } from './controllers/payment.controller.js';
 import reviewRoutes from './routes/review.routes.js';
 
 
@@ -30,6 +31,10 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({ origin: process.env.ALLOWED_ORIGINS }));
+
+// Stripe webhook route - must be before express.json()
+app.post('/api/v1/payments/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
+
 app.use(express.json({ limit: "10kb" }));
 
 // Rate limiting (100 requests per 15 minutes)

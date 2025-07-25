@@ -34,43 +34,78 @@ export const createCheckoutSession = async (req, res) => {
         },
       ],
       mode: 'payment',
-      success_url: 'https://job-portal-swart-zeta.vercel.app/',//`${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: 'http://localhost:3000',//`${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment-cancel`,
       metadata: {
         bookingId: booking._id.toString(),
       },
     });
 
-    res.status(200).json({ sessionId: session.id });
+    res.status(200).json({ sessionId: session.id , url: session.url });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // Stripe webhook handler
-export const stripeWebhook = (req, res) => {
+export const stripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(
+      req.body, 
+      sig, 
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
   } catch (err) {
-    console.log(`Error message: ${err.message}`);
+    console.error(`⚠️ Webhook signature verification failed: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the event
+  // Handle the checkout.session.completed event
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const bookingId = session.metadata.bookingId;
+    try {
+      const session = event.data.object;
+      
+      // Verify the payment was successful
+      if (session.payment_status !== 'paid') {
+        console.warn(`Payment not completed for session: ${session.id}`);
+        return res.json({ received: true });
+      }
 
-    Booking.findByIdAndUpdate(bookingId, { paymentStatus: 'paid' }, { new: true })
-      .then(updatedBooking => {
-        console.log('Booking updated:', updatedBooking);
-      })
-      .catch(err => {
-        console.error('Error updating booking:', err);
-      });
+      const bookingId = session.metadata.bookingId;
+      
+      if (!bookingId) {
+        console.error('No bookingId found in session metadata');
+        return res.json({ received: true });
+      }
+
+      // Update the booking
+      const updatedBooking = await Booking.findByIdAndUpdate(
+        bookingId, 
+        { 
+          paymentStatus: 'paid',
+          $push: { paymentHistory: {
+            amount: session.amount_total / 100, // Convert back to dollars
+            currency: session.currency,
+            paymentDate: new Date(),
+            stripeSessionId: session.id
+          }}
+        }, 
+        { new: true }
+      );
+
+      if (!updatedBooking) {
+        console.error(`Booking not found: ${bookingId}`);
+      } else {
+        console.log(`✅ Booking ${bookingId} marked as paid`);
+        // Here you could add email notification or other post-payment logic
+      }
+    } catch (err) {
+      console.error('Error processing webhook:', err);
+      // Don't return error to Stripe - they'll keep retrying
+    }
   }
 
   res.json({ received: true });

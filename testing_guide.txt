@@ -1,0 +1,453 @@
+# SureServ Backend Comprehensive Testing Guide
+
+This guide provides a step-by-step process to test all implemented features using Postman.
+Replace all placeholder IDs (e.g., YOUR_USER_ID, YOUR_SERVICE_ID) with actual IDs from your database.
+Most routes require authentication. Ensure you have a valid JWT token and include it in the 'Authorization: Bearer <token>' header.
+
+---
+
+## 1. Authentication
+
+### 1.1. Login User
+
+*   **Purpose:** Obtain a JWT token for authenticated requests.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/auth/login`
+*   **Body (JSON):**
+    ```json
+    {
+      "email": "user@example.com",
+      "password": "password123"
+    }
+    ```
+*   **Notes:** Use credentials of an existing user (customer or provider). Save the returned token.
+
+### 1.2. Update User Password
+
+*   **Purpose:** Change a user's password.
+*   **Method:** `PATCH`
+*   **URL:** `http://localhost:3000/api/v1/auth/YOUR_USER_ID/password`
+*   **Body (JSON):**
+    ```json
+    {
+      "oldPassword": "oldpassword123",
+      "newPassword": "newsecurepassword"
+    }
+    ```
+*   **Notes:** Requires authentication. `YOUR_USER_ID` should be the ID of the authenticated user.
+
+### 1.3. Logout User
+
+*   **Purpose:** Invalidate the current user session.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/auth/logout`
+*   **Notes:** Requires authentication.
+
+---
+
+## 2. Customer Management
+
+### 2.1. Get All Customers
+
+*   **Purpose:** Retrieve a list of all customer accounts.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/customers`
+*   **Notes:** Requires authentication and `admin` role.
+
+### 2.2. Get Customer by ID
+
+*   **Purpose:** Retrieve details of a specific customer.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/customers/YOUR_CUSTOMER_USER_ID`
+*   **Notes:** Requires authentication. Can retrieve own profile or if `admin`.
+
+### 2.3. Create a New Customer
+
+*   **Purpose:** Register a new customer account.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/customers`
+*   **Body (JSON):**
+    ```json
+    {
+      "name": "New Customer",
+      "email": "new.customer@example.com",
+      "password": "securepassword",
+      "phone": "1234567890"
+    }
+    ```
+*   **Notes:** No authentication needed.
+
+### 2.4. Update Customer Details
+
+*   **Purpose:** Modify details of an existing customer.
+*   **Method:** `PUT`
+*   **URL:** `http://localhost:3000/api/v1/customers/YOUR_CUSTOMER_USER_ID`
+*   **Body (JSON):**
+    ```json
+    {
+      "name": "Updated Customer Name",
+      "phone": "0987654321"
+    }
+    ```
+*   **Notes:** Requires authentication. Can update own profile.
+
+### 2.5. Delete a Customer
+
+*   **Purpose:** Remove a customer account.
+*   **Method:** `DELETE`
+*   **URL:** `http://localhost:3000/api/v1/customers/YOUR_CUSTOMER_USER_ID`
+*   **Notes:** Requires authentication and `admin` role.
+
+---
+
+## 3. Provider Management
+
+### 3.1. Get All Providers
+
+*   **Purpose:** Retrieve a list of all provider accounts.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/providers`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 3.2. Get Provider by ID
+
+*   **Purpose:** Retrieve details of a specific provider.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/providers/YOUR_PROVIDER_USER_ID`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 3.3. Create a New Provider
+
+*   **Purpose:** Register a new provider account.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/providers`
+*   **Body (JSON):**
+    ```json
+    {
+      "name": "New Provider",
+      "email": "new.provider@example.com",
+      "password": "securepassword",
+      "phone": "1122334455",
+      "nid": "1234567890",
+      "license": "PROV-LIC-001"
+    }
+    ```
+*   **Notes:** No authentication needed.
+
+### 3.4. Update Provider Details
+
+*   **Purpose:** Modify details of an existing provider.
+*   **Method:** `PUT`
+*   **URL:** `http://localhost:3000/api/v1/providers/YOUR_PROVIDER_USER_ID`
+*   **Body (JSON):**
+    ```json
+    {
+      "phone": "5544332211",
+      "availability": [
+        { "day": "Mon", "slots": ["09:00-12:00"] },
+        { "day": "Wed", "slots": ["14:00-17:00"] }
+      ]
+    }
+    ```
+*   **Notes:** Requires authentication. Provider can update their own profile.
+
+### 3.5. Delete a Provider
+
+*   **Purpose:** Remove a provider account.
+*   **Method:** `DELETE`
+*   **URL:** `http://localhost:3000/api/v1/providers/YOUR_PROVIDER_USER_ID`
+*   **Notes:** Requires authentication and `admin` role.
+
+### 3.6. Get Provider Daily Earnings
+
+*   **Purpose:** View a provider's earnings for the current day.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/providers/YOUR_PROVIDER_USER_ID/earnings/daily`
+*   **Notes:** Requires authentication.
+
+### 3.7. Get Provider Monthly Earnings
+
+*   **Purpose:** View a provider's earnings for the current month.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/providers/YOUR_PROVIDER_USER_ID/earnings/monthly`
+*   **Notes:** Requires authentication.
+
+### 3.8. Set Provider Active Status
+
+*   **Purpose:** Change a provider's active status.
+*   **Method:** `PUT`
+*   **URL:** `http://localhost:3000/api/v1/providers/YOUR_PROVIDER_USER_ID/status`
+*   **Body (JSON):**
+    ```json
+    {
+      "activeStatus": false
+    }
+    ```
+*   **Notes:** Requires authentication. Set to `true` or `false`.
+
+---
+
+## 4. Address Management
+
+### 4.1. Get All Addresses for a User
+
+*   **Purpose:** Retrieve all addresses associated with a specific user (customer or provider).
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/addresses/YOUR_USER_ID/getAllAddresses`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 4.2. Get a Single Address by ID
+
+*   **Purpose:** Retrieve details of a specific address.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/addresses/YOUR_ADDRESS_ID`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 4.3. Create a New Address for a User
+
+*   **Purpose:** Add a new address for a user.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/addresses/YOUR_USER_ID/`
+*   **Body (JSON):**
+    ```json
+    {
+      "street": "123 Main St",
+      "city": "Anytown",
+      "state": "CA",
+      "zipCode": "90210",
+      "country": "USA",
+      "isDefault": true
+    }
+    ```
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 4.4. Update an Address by ID
+
+*   **Purpose:** Modify details of an existing address.
+*   **Method:** `PATCH`
+*   **URL:** `http://localhost:3000/api/v1/addresses/YOUR_ADDRESS_ID`
+*   **Body (JSON):**
+    ```json
+    {
+      "street": "456 Oak Ave",
+      "isDefault": false
+    }
+    ```
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 4.5. Delete an Address by ID
+
+*   **Purpose:** Remove an address.
+*   **Method:** `DELETE`
+*   **URL:** `http://localhost:3000/api/v1/addresses/YOUR_ADDRESS_ID`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+---
+
+## 5. Service Management
+
+### 5.1. Get All Services
+
+*   **Purpose:** Retrieve a list of all services. Can be filtered by `providerId` (e.g., `?providerId=YOUR_PROVIDER_ID`).
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/services`
+*   **Notes:** No authentication specified in routes.
+
+### 5.2. Get Service by ID
+
+*   **Purpose:** Retrieve details of a specific service.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/services/YOUR_SERVICE_ID`
+*   **Notes:** No authentication specified in routes.
+
+### 5.3. Create a New Service
+
+*   **Purpose:** Add a new service offered by a provider.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/services`
+*   **Body (JSON):**
+    ```json
+    {
+      "providerId": "YOUR_PROVIDER_USER_ID",
+      "serviceName": "Electrical Wiring Installation",
+      "yearsOfExperience": 8,
+      "description": "Professional electrical wiring installation for residential and commercial properties.",
+      "price": 120,
+      "serviceImage": "https://example.com/electrical_service.jpg"
+    }
+    ```
+*   **Notes:** Requires authentication and `provider` role.
+
+### 5.4. Update a Service
+
+*   **Purpose:** Modify details of an existing service.
+*   **Method:** `PATCH`
+*   **URL:** `http://localhost:3000/api/v1/services/YOUR_SERVICE_ID`
+*   **Body (JSON):**
+    ```json
+    {
+      "price": 150,
+      "description": "Updated description for electrical wiring."
+    }
+    ```
+*   **Notes:** Requires authentication and `provider` role. Only the provider who owns the service can update it.
+
+### 5.5. Delete a Service
+
+*   **Purpose:** Remove a service.
+*   **Method:** `DELETE`
+*   **URL:** `http://localhost:3000/api/v1/services/YOUR_SERVICE_ID`
+*   **Notes:** Requires authentication and `provider` role. Only the provider who owns the service can delete it.
+
+---
+
+## 6. Booking Management
+
+### 6.1. Get All Bookings
+
+*   **Purpose:** Retrieve a list of all bookings.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/bookings`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 6.2. Get a Single Booking
+
+*   **Purpose:** Retrieve details of a specific booking.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/bookings/YOUR_BOOKING_ID`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 6.3. Create a Booking
+
+*   **Purpose:** Create a new booking.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/bookings`
+*   **Body (JSON):**
+    ```json
+    {
+      "customer": "YOUR_CUSTOMER_USER_ID",
+      "provider": "YOUR_PROVIDER_USER_ID",
+      "service": "YOUR_SERVICE_ID",
+      "date": "2025-09-15T10:00:00.000Z",
+      "timeSlot": "10:00 AM - 12:00 PM",
+      "description": "Fix the leaky kitchen sink.",
+      "address": "123 Main St, Anytown",
+      "totalPrice": 75
+    }
+    ```
+*   **Notes:** Save the returned `_id` of the booking.
+
+### 6.4. Update a Booking
+
+*   **Purpose:** Modify details of an existing booking (e.g., update status).
+*   **Method:** `PUT`
+*   **URL:** `http://localhost:3000/api/v1/bookings/YOUR_BOOKING_ID`
+*   **Body (JSON):**
+    ```json
+    {
+      "status": "completed"
+    }
+    ```
+*   **Notes:** This will update the `totalEarnings` for the associated provider if status changes to `completed`.
+
+### 6.5. Delete a Booking
+
+*   **Purpose:** Remove a booking.
+*   **Method:** `DELETE`
+*   **URL:** `http://localhost:3000/api/v1/bookings/YOUR_BOOKING_ID`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+---
+
+## 7. Payment Integration (Stripe)
+
+### 7.1. Create Checkout Session
+
+*   **Purpose:** Initiate a Stripe payment session.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/payments/create-checkout-session`
+*   **Body (JSON):**
+    ```json
+    {
+      "bookingId": "YOUR_BOOKING_ID"
+    }
+    ```
+*   **Notes:**
+    *   Ensure `FRONTEND_URL` in your `.env` is set correctly (e.g., `https://your-ngrok-subdomain.ngrok-free.app`).
+    *   The response will contain a `sessionId`. Open the Stripe Checkout URL (`https://checkout.stripe.com/pay/cs_test_...`) in your browser.
+    *   Use Stripe test cards (e.g., `4242...4242`) to complete the payment.
+
+### 7.2. Webhook Endpoint
+
+*   **Purpose:** This endpoint receives payment confirmations from Stripe.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/payments/webhook`
+*   **Notes:**
+    *   This endpoint is called by Stripe, not directly by your frontend.
+    *   **Setup for Local Testing (ngrok/Stripe CLI):**
+        1.  Start ngrok: `ngrok http 3000` (copy the HTTPS URL).
+        2.  Update `FRONTEND_URL` in `.env` to your ngrok HTTPS URL.
+        3.  Configure Stripe Webhook in your Stripe Dashboard:
+            *   Endpoint URL: `https://your-ngrok-subdomain.ngrok-free.app/api/v1/payments/webhook`
+            *   Events: `checkout.session.completed`
+            *   Copy the `whsec_...` signing secret to `STRIPE_WEBHOOK_SECRET` in your `.env`.
+        4.  Restart your Node.js server.
+    *   **Action:** Complete the payment on the Stripe Checkout page (from 7.1).
+    *   **Verification:** Your server's console should log "Booking updated:" and the booking's `paymentStatus` will change to "paid".
+
+---
+
+## 8. Review System
+
+### 8.1. Get All Reviews
+
+*   **Purpose:** Retrieve all reviews.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/reviews`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 8.2. Get Single Review
+
+*   **Purpose:** Retrieve details of a specific review.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/reviews/YOUR_REVIEW_ID`
+*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+
+### 8.3. Create a Review
+
+*   **Purpose:** Submit a review for a service.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/reviews`
+*   **Body (JSON):**
+    ```json
+    {
+      "service": "YOUR_SERVICE_ID",
+      "rating": 5,
+      "comment": "Outstanding service! Very professional and efficient."
+    }
+    ```
+*   **Notes:**
+    *   Requires authentication (customer user).
+    *   This will update the `averageRating` and `numberOfReviews` for the associated provider.
+    *   You can only review a service once per customer.
+
+### 8.4. Update Review
+
+*   **Purpose:** Modify an existing review.
+*   **Method:** `PUT`
+*   **URL:** `http://localhost:3000/api/v1/reviews/YOUR_REVIEW_ID`
+*   **Body (JSON):**
+    ```json
+    {
+      "rating": 4,
+      "comment": "Good service, but could be a bit faster."
+    }
+    ```
+*   **Notes:** Requires authentication. Only the customer who created the review can update it.
+
+### 8.5. Delete Review
+
+*   **Purpose:** Remove a review.
+*   **Method:** `DELETE`
+*   **URL:** `http://localhost:3000/api/v1/reviews/YOUR_REVIEW_ID`
+*   **Notes:** Requires authentication. Only the customer who created the review can delete it.

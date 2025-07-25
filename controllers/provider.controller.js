@@ -1,5 +1,6 @@
 import Provider from '../models/provider.model.js';
 import bcrypt from 'bcryptjs';
+import Booking from '../models/booking.model.js';
 
 // Get all providers
 export const getProviders = async (req, res) => {
@@ -110,5 +111,96 @@ export const deleteProvider = async (req, res) => {
     res.json({ message: 'Provider deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Get daily earnings for a provider
+export const getDailyEarnings = async (req, res) => {
+  try {
+    const providerId = req.params.id; // Assuming provider ID is passed in params
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const dailyBookings = await Booking.find({
+      provider: providerId,
+      status: 'completed',
+      createdAt: { $gte: today, $lt: tomorrow },
+    }).populate('service');
+
+    const dailyEarnings = dailyBookings.reduce((sum, booking) => {
+      return sum + (booking.service ? booking.service.price : 0);
+    }, 0);
+
+    res.status(200).json({
+      success: true,
+      providerId,
+      date: today.toISOString().split('T')[0],
+      dailyEarnings,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get monthly earnings for a provider
+export const getMonthlyEarnings = async (req, res) => {
+  try {
+    const providerId = req.params.id; // Assuming provider ID is passed in params
+
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    firstDayOfMonth.setHours(0, 0, 0, 0);
+
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    lastDayOfMonth.setHours(23, 59, 59, 999);
+
+    const monthlyBookings = await Booking.find({
+      provider: providerId,
+      status: 'completed',
+      createdAt: { $gte: firstDayOfMonth, $lte: lastDayOfMonth },
+    }).populate('service');
+
+    const monthlyEarnings = monthlyBookings.reduce((sum, booking) => {
+      return sum + (booking.service ? booking.service.price : 0);
+    }, 0);
+
+    res.status(200).json({
+      success: true,
+      providerId,
+      month: today.getMonth() + 1,
+      year: today.getFullYear(),
+      monthlyEarnings,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Set provider active status
+export const setProviderActiveStatus = async (req, res) => {
+  try {
+    const providerId = req.params.id;
+    const { activeStatus } = req.body;
+
+    const provider = await Provider.findByIdAndUpdate(
+      providerId,
+      { activeStatus },
+      { new: true, runValidators: true }
+    );
+
+    if (!provider) {
+      return res.status(404).json({ success: false, message: 'Provider not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: provider,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

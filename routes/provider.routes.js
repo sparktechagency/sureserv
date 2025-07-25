@@ -5,7 +5,11 @@ import {
   createProvider,
   updateProvider,
   deleteProvider,
+  getDailyEarnings,
+  getMonthlyEarnings,
+  setProviderActiveStatus,
 } from '../controllers/provider.controller.js';
+
 import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -24,5 +28,10 @@ router.put('/:id', authenticate, updateProvider);
 
 // DELETE a provider (Admin only)
 router.delete('/:id', authenticate, authorize('admin'), deleteProvider);
+
+// Provider statistics and status
+router.get('/:id/earnings/daily', authenticate, getDailyEarnings);
+router.get('/:id/earnings/monthly', authenticate, getMonthlyEarnings);
+router.put('/:id/status', authenticate, setProviderActiveStatus);
 
 export default router;
