@@ -11,9 +11,11 @@ import customerRoutes from './routes/customer.routes.js';
 import providerRoutes from './routes/provider.routes.js';
 import addressRoutes from './routes/address.routes.js';
 import serviceRoutes from './routes/service.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
+import reviewRoutes from './routes/review.routes.js';
 
 
-import bookingRoutes from './routes/bookingRoutes.js'; // Keep existing
+import bookingRoutes from './routes/booking.routes.js';
 
 import './utils/scheduler.js'; // Import to start cron jobs
 
@@ -42,7 +44,9 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/customers', customerRoutes);
 app.use('/api/v1/providers', providerRoutes);
 app.use('/api/v1/addresses', addressRoutes); 
-app.use('/api/v1/services', serviceRoutes); 
+app.use('/api/v1/services', serviceRoutes);
+app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/reviews', reviewRoutes); 
 
 
 

@@ -1,112 +1,122 @@
 import Review from '../models/review.model.js';
 import Service from '../models/service.model.js';
-import Customer from '../models/customer.model.js';
-
-// Get all reviews for a specific service
-export const getReviewsByService = async (req, res) => {
-  try {
-    const reviews = await Review.find({ serviceId: req.params.serviceId })
-      .populate('customerId', 'firstName lastName email contactNumber') // Populate customer details
-      .populate('serviceId', 'serviceName'); // Populate service name
-    res.json(reviews);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// Get a single review by ID
-export const getReviewById = async (req, res) => {
-  try {
-    const review = await Review.findById(req.params.id)
-      .populate('customerId', 'firstName lastName email contactNumber')
-      .populate('serviceId', 'serviceName');
-    if (review == null) {
-      return res.status(404).json({ message: 'Review not found' });
-    }
-    res.json(review);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
 
 // Create a new review
 export const createReview = async (req, res) => {
-  const { serviceId, rating, reviewText } = req.body;
-  const customerId = req.user.id; // Assuming user ID is stored in req.user after authentication
-
-  if (!serviceId || !rating || !reviewText) {
-    return res.status(400).json({ message: 'Service ID, rating, and review text are required' });
-  }
-
   try {
-    // Check if service exists
+    const { service: serviceId, rating, comment } = req.body;
+    const customerId = req.user.id; // Assuming req.user.id is populated by authentication middleware
+
     const service = await Service.findById(serviceId);
+
     if (!service) {
-      return res.status(404).json({ message: 'Service not found' });
+      return res.status(404).json({ success: false, message: 'Service not found' });
     }
 
-    // Check if customer exists (optional, but good for data integrity)
-    const customer = await Customer.findById(customerId);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
+    // Check if a review already exists for this service by this customer
+    const existingReview = await Review.findOne({ service: serviceId, customer: customerId });
+    if (existingReview) {
+      return res.status(400).json({ success: false, message: 'You have already reviewed this service.' });
     }
 
-    const review = new Review({
-      serviceId,
-      customerId,
+    const review = await Review.create({
+      service: serviceId,
+      customer: customerId,
+      provider: service.providerId, // Assuming service model has providerId
       rating,
-      reviewText,
+      comment,
     });
 
-    const newReview = await review.save();
-    res.status(201).json(newReview);
-  } catch (err) {
-    if (err.code === 11000) { // Duplicate key error (customer already reviewed this service)
-      return res.status(409).json({ message: 'You have already reviewed this service.' });
-    }
-    res.status(400).json({ message: err.message });
+    res.status(201).json({
+      success: true,
+      data: review,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Update a review (only by the customer who created it)
+// Get all reviews
+export const getReviews = async (req, res) => {
+  try {
+    const reviews = await Review.find().populate('customer').populate('provider').populate('service');
+    res.status(200).json({
+      success: true,
+      count: reviews.length,
+      data: reviews,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get single review
+export const getReview = async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id).populate('customer').populate('provider').populate('service');
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: review,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update review
 export const updateReview = async (req, res) => {
   try {
-    const review = await Review.findById(req.params.id);
-    if (review == null) {
-      return res.status(404).json({ message: 'Review not found' });
+    let review = await Review.findById(req.params.id);
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
     }
 
-    // Ensure the review belongs to the authenticated customer
-    if (review.customerId.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to update this review' });
+    // Ensure user is review owner
+    if (review.customer.toString() !== req.user.id) {
+      return res.status(401).json({ success: false, message: 'Not authorized to update this review' });
     }
 
-    if (req.body.rating != null) review.rating = req.body.rating;
-    if (req.body.reviewText != null) review.reviewText = req.body.reviewText;
+    review = await Review.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
-    const updatedReview = await review.save();
-    res.json(updatedReview);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(200).json({
+      success: true,
+      data: review,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Delete a review (only by the customer who created it or by an admin)
+// Delete review
 export const deleteReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
-    if (review == null) {
-      return res.status(404).json({ message: 'Review not found' });
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
     }
 
-    // Ensure the review belongs to the authenticated customer or is an admin
-    if (review.customerId.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized to delete this review' });
+    // Ensure user is review owner
+    if (review.customer.toString() !== req.user.id) {
+      return res.status(401).json({ success: false, message: 'Not authorized to delete this review' });
     }
 
     await review.remove();
-    res.json({ message: 'Review deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    res.status(200).json({
+      success: true,
+      data: {},
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
