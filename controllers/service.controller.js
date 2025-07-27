@@ -32,6 +32,11 @@ export const getServiceById = async (req, res) => {
 // Create a new service
 export const createService = async (req, res) => {
   const { providerId, serviceName, category, subcategory, yearsOfExperience, description, price, serviceImage } = req.body;
+  let newServiceImage = null;
+
+  if (req.file) {
+    newServiceImage = req.file.path.replace(/\\/g, "/");
+  }
 
   if (!providerId || !serviceName || !category) {
     return res.status(400).json({ message: 'Provider ID, service name, and category are required' });
@@ -51,7 +56,7 @@ export const createService = async (req, res) => {
       yearsOfExperience,
       description,
       price,
-      serviceImage,
+      serviceImage: newServiceImage || serviceImage,
     });
 
     const newService = await service.save();

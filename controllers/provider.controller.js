@@ -27,7 +27,24 @@ export const getProviderById = async (req, res) => {
 
 // Create a new provider
 export const createProvider = async (req, res) => {
-  const { firstName, lastName, email, contactNumber, password, profilePic, businessName, nid, license } = req.body;
+  const { firstName, lastName, email, contactNumber, password, businessName } = req.body;
+  let profilePic = null;
+  let nid = null;
+  let license = null;
+  let addressprof = null;
+
+  if (req.files && req.files['profilePic']) {
+    profilePic = req.files['profilePic'][0].path.replace(/\\/g, "/");
+  }
+  if (req.files && req.files['nid']) {
+    nid = req.files['nid'][0].path.replace(/\\/g, "/");
+  }
+  if (req.files && req.files['license']) {
+    license = req.files['license'][0].path.replace(/\\/g, "/");
+  }
+  if (req.files && req.files['addressprof']) {
+    addressprof = req.files['addressprof'][0].path.replace(/\\/g, "/");
+  }
 
   try {
     const salt = await bcrypt.genSalt(10);
@@ -44,6 +61,7 @@ export const createProvider = async (req, res) => {
       businessName,
       nid,
       license,
+      addressprof,
       rating: 0, // Default rating
       availability: [] // Default empty availability
     });
@@ -76,17 +94,22 @@ export const updateProvider = async (req, res) => {
       provider.contactNumber = req.body.contactNumber;
     }
     // Password update handled by separate route
-    if (req.body.profilePic != null) {
-      provider.profilePic = req.body.profilePic;
+     // Handle image upload if present
+    if (req.files && req.files['profilePic']) {
+      provider.profilePic = req.files['profilePic'][0].path.replace(/\\/g, "/"); 
     }
+    if (req.files && req.files['nid']) {
+      provider.nid = req.files['nid'][0].path.replace(/\\/g, "/");
+    }
+    if (req.files && req.files['license']) {
+      provider.license = req.files['license'][0].path.replace(/\\/g, "/");
+    }
+    if (req.files && req.files['addressprof']) {
+      provider.addressprof = req.files['addressprof'][0].path.replace(/\\/g, "/");
+    }
+
     if (req.body.businessName != null) {
       provider.businessName = req.body.businessName;
-    }
-    if (req.body.nid != null) {
-      provider.nid = req.body.nid;
-    }
-    if (req.body.license != null) {
-      provider.license = req.body.license;
     }
     if (req.body.businessAddress != null) {
       provider.businessAddress = req.body.businessAddress;

@@ -70,8 +70,9 @@ export const updateCustomer = async (req, res) => {
       customer.contactNumber = req.body.contactNumber;
     }
     // Password update handled by separate route
-    if (req.body.profilePic != null) {
-      customer.profilePic = req.body.profilePic;
+     if (req.file) {
+      customer.profilePic = req.file.path.replace(/\\/g, "/"); 
+      // For production: Upload to Cloudinary here and store URL instead
     }
 
     const updatedCustomer = await customer.save();

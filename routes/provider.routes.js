@@ -11,6 +11,7 @@ import {
 } from '../controllers/provider.controller.js';
 
 import { authenticate, authorize } from '../middleware/auth.js';
+import { upload } from '../config/multer.js';
 
 const router = express.Router();
 
@@ -21,10 +22,10 @@ router.get('/', getProviders);
 router.get('/:id', getProviderById);
 
 // POST a new provider (No auth needed for creation)
-router.post('/', createProvider);
+router.post('/', upload.fields([{ name: 'profilePic', maxCount: 1 }, { name: 'nid', maxCount: 1 }, { name: 'license', maxCount: 1 }, { name: 'addressprof', maxCount: 1 }]), createProvider);
 
 // PUT to update a provider (Authenticated provider can update their own profile)
-router.put('/:id', authenticate, updateProvider);
+router.put('/:id', authenticate, upload.fields([{ name: 'profilePic', maxCount: 1 }, { name: 'nid', maxCount: 1 }, { name: 'license', maxCount: 1 }, { name: 'addressprof', maxCount: 1 }]), updateProvider);
 
 // DELETE a provider (Admin only)
 router.delete('/:id', authenticate, authorize('admin'), deleteProvider);

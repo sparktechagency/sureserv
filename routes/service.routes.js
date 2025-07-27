@@ -7,6 +7,7 @@ import {
   deleteService,
 } from '../controllers/service.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { upload } from '../config/multer.js';
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.get('/', getServices);
 router.get('/:id', getServiceById);
 
 // Create a new service (Provider only)
-router.post('/', authenticate, authorize('provider'), createService);
+router.post('/', authenticate, authorize('provider'), upload.single('serviceImage'), createService);
 
 // Update a service (Provider only, and only their own services)
 router.patch('/:id', authenticate, authorize('provider'), updateService);

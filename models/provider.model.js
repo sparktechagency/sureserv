@@ -4,6 +4,7 @@ import User from './user.model.js';
 const Provider = User.discriminator('Provider', new mongoose.Schema({
   nid: String, // National ID
   license: String, // Business license number or details
+  addressprof: String,
   rating: { type: Number, default: 0 },
   totalEarnings: { type: Number, default: 0 },
   averageRating: { type: Number, default: 0 },

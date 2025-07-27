@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
   contactNumber: {
     type: String,
     unique: true,
-    required: true,
+    required: function() { return !this.googleId; },
   },
 
   phoneVerified: {
@@ -29,7 +29,13 @@ const userSchema = new mongoose.Schema({
 
   password: {
     type: String,
-    required: true,
+    required: function() { return !this.googleId; },
+  },
+
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
   },
 
   role: {

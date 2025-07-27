@@ -7,6 +7,7 @@ import {
   deleteCustomer,
 } from '../controllers/customer.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { upload } from '../config/multer.js';
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.get('/:id', authenticate, getCustomerById);
 router.post('/', createCustomer);
 
 // PUT to update a customer (Authenticated user can update their own profile)
-router.put('/:id', authenticate, updateCustomer);
+router.put('/:id', authenticate,upload.single('profilePic'), updateCustomer);
 
 // DELETE a customer (Admin only)
 router.delete('/:id', authenticate, authorize('admin'), deleteCustomer);

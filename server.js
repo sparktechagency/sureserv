@@ -4,7 +4,10 @@ import connectDB from './config/db.js';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import cors from 'cors';
-
+import { fileURLToPath } from 'url';
+import session from 'express-session';
+import passport from 'passport';
+import './config/passport.js'; // Import passport config
 
 import authRoutes from './routes/auth.routes.js';
 import customerRoutes from './routes/customer.routes.js';
@@ -19,6 +22,7 @@ import reviewRoutes from './routes/review.routes.js';
 import bookingRoutes from './routes/booking.routes.js';
 
 import './utils/scheduler.js'; // Import to start cron jobs
+import path from 'path';
 
 // Load env vars
 dotenv.config();
@@ -26,7 +30,21 @@ dotenv.config();
 // Connect to database
 connectDB();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.use(express.urlencoded({ extended: true }));
+
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'supersecret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
+
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Security middleware
 app.use(helmet());
@@ -36,6 +54,7 @@ app.use(cors({ origin: process.env.ALLOWED_ORIGINS }));
 app.post('/api/v1/payments/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 
 app.use(express.json({ limit: "10kb" }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rate limiting (100 requests per 15 minutes)
 const limiter = rateLimit({
@@ -48,14 +67,10 @@ app.use('/api/auth', limiter); // Apply limiter to new auth route
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/customers', customerRoutes);
 app.use('/api/v1/providers', providerRoutes);
-app.use('/api/v1/addresses', addressRoutes); 
+app.use('/api/v1/addresses', addressRoutes);
 app.use('/api/v1/services', serviceRoutes);
 app.use('/api/v1/payments', paymentRoutes);
-app.use('/api/v1/reviews', reviewRoutes); 
-
-
-
-// Existing routes (if any)
+app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
 
 
