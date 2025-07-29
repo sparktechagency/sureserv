@@ -1,7 +1,8 @@
 import express from 'express';
-import { updatePassword, login, logout, generateToken } from '../controllers/auth.controller.js';
+import { updatePassword, login, logout, generateToken, forgotPassword, resetPassword, verifyOtp, resendOtp } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import passport from 'passport';
+import { createGoogleStrategy } from '../config/passport.js';
 
 const router = express.Router();
 
@@ -15,9 +16,19 @@ router.post('/login', login);
 router.post('/logout', logout);
 
 // Google OAuth routes
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', (req, res, next) => {
+    const googleStrategy = createGoogleStrategy(req);
+    passport.use(googleStrategy);
+    const state = JSON.stringify({
+        platform: req.query.platform || 'web',
+        role: req.query.role || 'customer' // Default to 'customer' if not provided
+    });
+    passport.authenticate('google', { scope: ['profile', 'email'], state: state })(req, res, next);
+});
 
-router.get('/google/callback',  (req, res, next) => {
+router.get('/google/callback', (req, res, next) => {
+    const googleStrategy = createGoogleStrategy(req);
+    passport.use(googleStrategy);
     passport.authenticate('google', (err, user, info) => {
       console.log('--- OAuth Error Details ---');
       console.log('Error:', err);
@@ -38,10 +49,25 @@ router.get('/google/callback',  (req, res, next) => {
       
       req.logIn(user, (err) => {
         if (err) return next(err);
-        return res.redirect('/dashboard');
+        const token = generateToken(user._id);
+        res.redirect(`/?token=${token}`);
       });
     })(req, res, next);
   }
 );
+
+// POST to request password reset
+router.post('/forgot-password', forgotPassword);
+
+// POST to reset password
+router.post('/reset-password', resetPassword);
+
+
+
+// POST to verify OTP
+router.post('/verify-otp', verifyOtp);
+
+// POST to resend OTP
+router.post('/resend-otp', resendOtp);
 
 export default router;

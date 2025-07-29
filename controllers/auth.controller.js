@@ -1,12 +1,74 @@
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import sendEmail from '../utils/email.js';
+import { sendSMS } from '../utils/twilio.js';
 
 // Generate JWT
 export const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '1h',
   });
+};
+
+
+
+// Verify OTP
+export const verifyOtp = async (req, res) => {
+  const { userId, otp } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    if (user.otp !== otp || user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP.' });
+    }
+
+    user.phoneVerified = true;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: 'Phone number verified successfully.' });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Resend OTP
+export const resendOtp = async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+    const otpExpires = Date.now() + 10 * 60 * 1000; // OTP valid for 10 minutes
+
+    user.otp = otp;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // Send new OTP via SMS
+    const message = `Your new SureServ verification code is ${otp}. It is valid for 10 minutes.`;
+    await sendSMS(user.contactNumber, message);
+
+    res.status(200).json({ message: 'New OTP sent to your contact number.' });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // Login User
@@ -81,6 +143,88 @@ export const updatePassword = async (req, res) => {
     await user.save();
 
     res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Request password reset
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User with that email does not exist.' });
+    }
+
+    // Generate a 4-digit numeric code
+    const resetCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Set token and expiry on user model
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetCode).digest('hex');
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    await user.save();
+
+    const message = `Your password reset code is ${resetCode}. It is valid for 10 minutes.`;
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Password Reset Code (SureServ)',
+        message,
+      });
+
+      res.status(200).json({
+        message: 'Password reset code sent to your email.',
+      });
+    } catch (emailError) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+      return res.status(500).json({
+        message: 'There was an error sending the email. Try again later.',
+        error: emailError.message,
+      });
+    }
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Reset password
+export const resetPassword = async (req, res) => {
+  const { resetCode, newPassword, newPasswordConfirm } = req.body;
+
+  try {
+    const hashedCode = crypto.createHash('sha256').update(resetCode).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedCode,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Password reset code is invalid or has expired.' });
+    }
+
+    if (newPassword !== newPasswordConfirm) {
+      return res.status(400).json({ message: 'New passwords do not match.' });
+    }
+
+    // Hash new password and save
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Password has been reset.' });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -1,6 +1,8 @@
 import Provider from '../models/provider.model.js';
 import bcrypt from 'bcryptjs';
 import Booking from '../models/booking.model.js';
+import { sendSMS } from '../utils/twilio.js';
+import User from '../models/user.model.js';
 
 // Get all providers
 export const getProviders = async (req, res) => {
@@ -47,8 +49,18 @@ export const createProvider = async (req, res) => {
   }
 
   try {
+    // Check if user already exists
+    let existingUser = await User.findOne({ $or: [{ email }, { contactNumber }] });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with that email or contact number already exists.' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+    const otpExpires = Date.now() + 10 * 60 * 1000; // OTP valid for 10 minutes
 
     const provider = new Provider({
       firstName,
@@ -63,11 +75,22 @@ export const createProvider = async (req, res) => {
       license,
       addressprof,
       rating: 0, // Default rating
-      availability: [] // Default empty availability
+      availability: [], // Default empty availability
+      otp,
+      otpExpires,
+      phoneVerified: false, // Set to false initially
     });
 
     const newProvider = await provider.save();
-    res.status(201).json(newProvider);
+
+    // Send OTP via SMS
+    const message = `Your SureServ verification code is ${otp}. It is valid for 10 minutes.`;
+    await sendSMS(contactNumber, message);
+
+    res.status(201).json({
+      message: 'Provider registered. OTP sent to your contact number for verification.',
+      userId: newProvider._id,
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
