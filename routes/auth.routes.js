@@ -2,7 +2,7 @@ import express from 'express';
 import { updatePassword, login, logout, generateToken, forgotPassword, resetPassword, verifyOtp, resendOtp } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import passport from 'passport';
-import { createGoogleStrategy } from '../config/passport.js';
+import { createGoogleStrategy, createFacebookStrategy } from '../config/passport.js';
 
 const router = express.Router();
 
@@ -55,6 +55,38 @@ router.get('/google/callback', (req, res, next) => {
     })(req, res, next);
   }
 );
+
+// Facebook OAuth routes
+router.get('/facebook', (req, res, next) => {
+    const facebookStrategy = createFacebookStrategy();
+    passport.use(facebookStrategy);
+    const state = JSON.stringify({
+        platform: req.query.platform || 'web',
+        role: req.query.role || 'customer' // Default to 'customer' if not provided
+    });
+    passport.authenticate('facebook', { scope: ['email'], state: state })(req, res, next);
+});
+
+router.get('/facebook/callback', (req, res, next) => {
+    const facebookStrategy = createFacebookStrategy();
+    passport.use(facebookStrategy);
+    passport.authenticate('facebook', (err, user, info) => {
+      if (err) {
+        return res.status(401).json({
+          error: 'Authentication failed',
+          details: err.message
+        });
+      }
+      if (!user) {
+        return res.redirect('/login-failed');
+      }
+      req.logIn(user, (err) => {
+        if (err) return next(err);
+        const token = generateToken(user._id);
+        res.redirect(`/?token=${token}`);
+      });
+    })(req, res, next);
+});
 
 // POST to request password reset
 router.post('/forgot-password', forgotPassword);

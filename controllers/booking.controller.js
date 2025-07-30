@@ -6,37 +6,72 @@ import { createNotification } from '../controllers/notification.controller.js';
 // Create a new booking
 export const createBooking = async (req, res) => {
   try {
-    const { service: serviceId, addOns } = req.body;
+    const { bookings: bookingRequests } = req.body;
 
-    const service = await Service.findById(serviceId);
-    if (!service) {
-      return res.status(404).json({ success: false, message: 'Service not found' });
+    if (!Array.isArray(bookingRequests)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Expected an array of bookings in the request body' 
+      });
     }
 
-    let calculatedTotalPrice = service.price;
+    const processedBookings = [];
+    
+    // Process each booking request
+    for (const request of bookingRequests) {
+      const { service: serviceId, addOns } = request;
 
-    if (addOns && Array.isArray(addOns)) {
-      calculatedTotalPrice += addOns.reduce((sum, item) => sum + (item.price || 0), 0);
+      const service = await Service.findById(serviceId);
+      if (!service) {
+        processedBookings.push({
+          success: false,
+          message: `Service not found for ID: ${serviceId}`,
+          request
+        });
+        continue;
+      }
+
+      let calculatedTotalPrice = service.price;
+
+      if (addOns && Array.isArray(addOns)) {
+        calculatedTotalPrice += addOns.reduce((sum, item) => sum + (item.price || 0), 0);
+      }
+
+      request.totalPrice = calculatedTotalPrice;
+
+      try {
+        const booking = await Booking.create(request);
+        
+        // Populate customer and service details for notification
+        const populatedBooking = await Booking.findById(booking._id)
+          .populate('customer')
+          .populate('service');
+
+        // Create booking confirmation notification for customer
+        if (populatedBooking.customer) {
+          const message = `Your booking for ${populatedBooking.service.name} on ${populatedBooking.date.toDateString()} at ${populatedBooking.timeSlot} has been successfully created.`;
+          await createNotification(populatedBooking.customer._id, message, 'booking_confirmation');
+        }
+
+        processedBookings.push({
+          success: true,
+          data: booking
+        });
+      } catch (error) {
+        processedBookings.push({
+          success: false,
+          message: error.message,
+          request
+        });
+      }
     }
 
-    req.body.totalPrice = calculatedTotalPrice;
-
-    const booking = await Booking.create(req.body);
-
-    // Populate customer and service details for notification
-    const populatedBooking = await Booking.findById(booking._id)
-      .populate('customer')
-      .populate('service');
-
-    // Create booking confirmation notification for customer
-    if (populatedBooking.customer) {
-      const message = `Your booking for ${populatedBooking.service.name} on ${populatedBooking.date.toDateString()} at ${populatedBooking.timeSlot} has been successfully created.`;
-      await createNotification(populatedBooking.customer._id, message, 'booking_confirmation');
-    }
-
-    res.status(201).json({
-      success: true,
-      data: booking,
+    // Check if all bookings succeeded
+    const allSuccess = processedBookings.every(b => b.success);
+    
+    res.status(allSuccess ? 201 : 207).json({
+      success: !processedBookings.some(b => !b.success),
+      data: processedBookings
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -146,6 +181,35 @@ export const deleteBooking = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {},
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Get all unpaid bookings
+export const getUnpaidBookings = async (req, res) => {
+  try {
+    const unpaidBookings = await Booking.find({ paymentStatus: 'unpaid' });
+    res.status(200).json({
+      success: true,
+      count: unpaidBookings.length,
+      data: unpaidBookings,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Get all bookings by user
+export const getBookingsByUser = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const bookings = await Booking.find({ $or: [{ customer: userId }, { provider: userId }] });
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings,
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

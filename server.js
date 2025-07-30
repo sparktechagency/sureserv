@@ -24,7 +24,7 @@ import reviewRoutes from './routes/review.routes.js';
 import bookingRoutes from './routes/booking.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 
-import './utils/scheduler.js'; // Import to start cron jobs
+//import './utils/scheduler.js'; // Import to start cron jobs
 import path from 'path';
 
 // Load env vars
@@ -78,6 +78,7 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+
 
 
 // Error handling
