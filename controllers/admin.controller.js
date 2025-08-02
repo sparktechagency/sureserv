@@ -7,6 +7,23 @@ import ServiceCategory from '../models/serviceCategory.model.js';
 import PromoCode from '../models/promoCode.model.js';
 import ServiceFee from '../models/serviceFee.model.js';
 
+export const updateAdminProfile = async (req, res) => {
+    try {
+        const adminId = req.user.id;
+        const updateData = req.body;
+
+        const updatedAdmin = await User.findByIdAndUpdate(adminId, updateData, { new: true });
+
+        if (!updatedAdmin) {
+            return res.status(404).json({ message: 'Admin not found' });
+        }
+
+        res.status(200).json(updatedAdmin);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const getDashboardStats = async (req, res) => {
     try {
         const { filter } = req.query;

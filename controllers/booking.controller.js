@@ -1,7 +1,9 @@
-import Booking from '../models/booking.model.js';
 import Provider from '../models/provider.model.js';
 import Service from '../models/service.model.js';
 import { createNotification } from '../controllers/notification.controller.js';
+import Booking from '../models/booking.model.js';
+
+
 
 // Create a new booking
 export const createBooking = async (req, res) => {
@@ -107,67 +109,65 @@ export const getBooking = async (req, res) => {
   }
 };
 
+
+
 // Update a booking
 export const updateBooking = async (req, res) => {
   try {
-    let booking = await Booking.findById(req.params.id).populate('services.service').populate('customer').populate('provider');
+    const bookingId = req.params.id;
+    const { status } = req.body;
+
+    let booking = await Booking.findById(bookingId).populate('services.service').populate('customer').populate('provider');
+    
+
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
     const oldStatus = booking.status;
-    const newStatus = req.body.status;
 
-    // Check if status is being updated to 'completed'
-    if (newStatus === 'completed' && oldStatus !== 'completed') {
-      const bookingSubtotal = booking.services.reduce((sum, item) => sum + item.price, 0);
-      
-      await Provider.findByIdAndUpdate(
-        booking.provider,
-        { $inc: { totalEarnings: bookingSubtotal } }, // Use calculated subtotal for earnings
-        { new: true }
-      );
-
-      // Notify admins about completed booking
-      const admins = await getAdminUsers();
-      for (const admin of admins) {
-          await createNotification(admin._id, `Booking ${booking._id} completed by provider ${booking.provider.firstName} ${booking.provider.lastName || ''}.`, 'booking_completed');
-      }
+    // If status is not changing, just return the booking
+    if (status === oldStatus) {
+      return res.status(200).json({ success: true, data: booking });
     }
 
-    booking = await Booking.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    // Update the booking status
+    booking.status = status;
+    const updatedBooking = await booking.save();
 
-    // Create notification if booking status changes
-    if (newStatus && newStatus !== oldStatus) {
+    // If the booking is completed, update the provider's earnings
+    if (status === 'completed' && oldStatus !== 'completed') {
+      const bookingSubtotal = booking.services.reduce((sum, item) => sum + item.price, 0);
+      await Provider.findByIdAndUpdate(booking.provider, { $inc: { totalEarnings: bookingSubtotal } });
+    }
+
+    // Create a notification for the customer
+    if (booking.customer) {
       let message = '';
+      
       const serviceNames = booking.services.map(s => s.service.serviceName).join(', ');
 
-      switch (newStatus) {
-        case 'active':
-          message = `Your booking for ${serviceNames} on ${booking.date.toDateString()} at ${booking.timeSlot} is now ACTIVE.`;
+      switch (status) {
+        case 'accepted':
+          message = `Your booking for ${serviceNames} has been accepted.`;
           break;
         case 'completed':
-          message = `Your booking for ${serviceNames} on ${booking.date.toDateString()} at ${booking.timeSlot} has been marked as COMPLETED.`;
+          message = `Your booking for ${serviceNames} has been completed.`;
           break;
-        case 'cancelled':
-          message = `Your booking for ${serviceNames} on ${booking.date.toDateString()} at ${booking.timeSlot} has been CANCELLED.`;
+        case 'rejected':
+          message = `Your booking for ${serviceNames} has been rejected.`;
           break;
         default:
-          message = `The status of your booking for ${serviceNames} on ${booking.date.toDateString()} at ${booking.timeSlot} has been updated to ${newStatus.toUpperCase()}.`;
+          message = `The status of your booking for ${serviceNames} has been updated to ${status}.`;
           break;
       }
 
-      if (booking.customer) {
-        await createNotification(booking.customer._id, message, 'booking_status_update');
-      }
+      await createNotification(booking.customer._id, message, 'booking_status_update');
     }
 
     res.status(200).json({
       success: true,
-      data: booking,
+      data: updatedBooking,
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

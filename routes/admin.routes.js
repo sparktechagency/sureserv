@@ -1,10 +1,11 @@
-import { getDashboardStats, getAllUsers, getAllProviders, approveProvider,updateUserStatus, verifyDocument, getAllServiceRequests, assignRequest, updateRequestStatus, getAllTransactions, initiatePayout, addServiceCategory, updateServiceCategory, deleteServiceCategory, createPromoCode, updateServiceFee, deleteTransaction } from '../controllers/admin.controller.js';
+import { getDashboardStats, getAllUsers, getAllProviders, approveProvider,updateUserStatus, verifyDocument, getAllServiceRequests, assignRequest, updateRequestStatus, getAllTransactions, initiatePayout, addServiceCategory, updateServiceCategory, deleteServiceCategory, createPromoCode, updateServiceFee, deleteTransaction, updateAdminProfile } from '../controllers/admin.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { upload } from '../config/multer.js';
 import express from 'express';
 
 const router = express.Router();
 
+router.put('/profile', authenticate, authorize('admin'), updateAdminProfile);
 router.get('/dashboard', authenticate, authorize('admin'), getDashboardStats);
 
 // User and Provider Management
