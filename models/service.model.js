@@ -24,6 +24,9 @@ const serviceSchema = new mongoose.Schema({
   description: String,
   price: Number,
   serviceImage: String,
+  address: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

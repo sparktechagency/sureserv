@@ -1,22 +1,25 @@
 import Stripe from 'stripe';
-import Booking from '../models/booking.model.js';
+import Order from '../models/order.model.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Create a checkout session
 export const createCheckoutSession = async (req, res) => {
   try {
-    const { bookingId } = req.body;
+    const { orderId } = req.body;
 
-    const booking = await Booking.findById(bookingId).populate('service');
+    const order = await Order.findById(orderId).populate({
+      path: 'bookings',
+      populate: {
+        path: 'services.service'
+      }
+    });
 
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    if (!booking.service) {
-      return res.status(404).json({ success: false, message: 'Associated service not found for this booking.' });
-    }
+    const serviceNames = order.bookings.map(b => b.services.map(s => s.service.serviceName).join(', ')).join('; ');
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -25,10 +28,10 @@ export const createCheckoutSession = async (req, res) => {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: booking.service ? booking.service.serviceName : 'Service',
-            description: booking.description,
+              name: `Order for ${serviceNames}`,
+              description: `Order #${order._id}`,
             },
-            unit_amount: booking.totalPrice * 100, // Amount in cents
+            unit_amount: order.totalAmount * 100, // Amount in cents
           },
           quantity: 1,
         },
@@ -37,7 +40,7 @@ export const createCheckoutSession = async (req, res) => {
       success_url: 'http://localhost:3000',//`${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment-cancel`,
       metadata: {
-        bookingId: booking._id.toString(),
+        orderId: order._id.toString(),
       },
     });
 
@@ -74,32 +77,27 @@ export const stripeWebhook = async (req, res) => {
         return res.json({ received: true });
       }
 
-      const bookingId = session.metadata.bookingId;
+      const orderId = session.metadata.orderId;
       
-      if (!bookingId) {
-        console.error('No bookingId found in session metadata');
+      if (!orderId) {
+        console.error('No orderId found in session metadata');
         return res.json({ received: true });
       }
 
-      // Update the booking
-      const updatedBooking = await Booking.findByIdAndUpdate(
-        bookingId, 
+      // Update the order
+      const updatedOrder = await Order.findByIdAndUpdate(
+        orderId, 
         { 
           paymentStatus: 'paid',
-          $push: { paymentHistory: {
-            amount: session.amount_total / 100, // Convert back to dollars
-            currency: session.currency,
-            paymentDate: new Date(),
-            stripeSessionId: session.id
-          }}
+          orderStatus: 'processing',
         }, 
         { new: true }
       );
 
-      if (!updatedBooking) {
-        console.error(`Booking not found: ${bookingId}`);
+      if (!updatedOrder) {
+        console.error(`Order not found: ${orderId}`);
       } else {
-        console.log(`✅ Booking ${bookingId} marked as paid`);
+        console.log(`✅ Order ${orderId} marked as paid`);
         // Here you could add email notification or other post-payment logic
       }
     } catch (err) {

@@ -6,6 +6,7 @@ import {
   updateAddress,
   deleteAddress,
 } from '../controllers/address.controller.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ router.get('/:userId/getAllAddresses', getAddresses);
 router.get('/:id', getAddressById);
 
 // Create a new address for a user
-router.post('/:userId/', createAddress);
+router.post('/',authenticate, createAddress);
 
 // Update an address by ID
 router.patch('/:id', updateAddress);

@@ -20,6 +20,9 @@ router.get('/:id', authenticate, getCustomerById);
 // POST a new customer (No auth needed for creation)
 router.post('/', createCustomer);
 
+// // POST to verify OTP
+// router.post('/verify-otp', verifyOtp);
+
 // PUT to update a customer (Authenticated user can update their own profile)
 router.put('/:id', authenticate,upload.single('profilePic'), updateCustomer);
 

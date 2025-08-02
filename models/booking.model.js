@@ -1,6 +1,23 @@
 import mongoose from 'mongoose';
 
+const serviceItemSchema = new mongoose.Schema({
+  service: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Service',
+    required: true,
+  },
+  price: {
+    type: Number,
+    required: true,
+  },
+});
+
 const bookingSchema = new mongoose.Schema({
+  orderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    required: true,
+  },
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -11,11 +28,7 @@ const bookingSchema = new mongoose.Schema({
     ref: "User",
     required: true
   },
-  service: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Service",
-    required: true
-  },
+  services: [serviceItemSchema],
   date: {
     type: Date,
     required: true
@@ -23,25 +36,18 @@ const bookingSchema = new mongoose.Schema({
   timeSlot: String,
   description: String,
   image: String,
-  address: String,
+  address: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Address',
+  },
   status: {
     type: String,
-    enum: ["pending", "confirmed", "completed", "cancelled", "disputed"],
-    default: "pending"
+    enum: ["active", "upcoming", "completed", "cancelled"],
+    default: "upcoming"
   },
-  addOns: [{
-    name: String,
-    price: Number
-  }],
   isUrgent: {
     type: Boolean,
     default: false
-  },
-  totalPrice: Number,
-  paymentStatus: {
-    type: String,
-    enum: ["unpaid", "paid", "refunded"],
-    default: "unpaid"
   },
   coupon: String,
 }, { timestamps: true }); 

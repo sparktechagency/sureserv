@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const reviewSchema = new mongoose.Schema({
+  booking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking',
+    required: true,
+  },
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -28,8 +33,8 @@ const reviewSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Prevent user from submitting more than one review per service
-reviewSchema.index({ service: 1, customer: 1 }, { unique: true });
+// A user can only review a specific service within a booking once.
+reviewSchema.index({ booking: 1, service: 1 }, { unique: true });
 
 const Review = mongoose.model('Review', reviewSchema);
 

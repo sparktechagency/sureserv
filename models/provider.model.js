@@ -14,6 +14,14 @@ const Provider = User.discriminator('Provider', new mongoose.Schema({
     day: { type: String, enum: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] },
     slots: [String] // e.g., ["09:00-11:00", "14:00-16:00"]
   }],
+  isApproved: {
+    type: Boolean,
+    default: false,
+  },
+  isDocumentVerified: {
+    type: Boolean,
+    default: false,
+  },
 
 }, { discriminatorKey: 'role' }));
 

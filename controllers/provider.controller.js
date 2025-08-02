@@ -1,8 +1,11 @@
 import Provider from '../models/provider.model.js';
+import Address from '../models/address.model.js';
 import bcrypt from 'bcryptjs';
 import Booking from '../models/booking.model.js';
 import { sendSMS } from '../utils/twilio.js';
 import User from '../models/user.model.js';
+
+import { generateToken } from './auth.controller.js';
 
 // Get all providers
 export const getProviders = async (req, res) => {
@@ -17,10 +20,15 @@ export const getProviders = async (req, res) => {
 // Get provider by ID
 export const getProviderById = async (req, res) => {
   try {
-    const provider = await Provider.findById(req.params.id);
+    const provider = await Provider.findById(req.params.id).lean(); // Use .lean() for a plain object
     if (provider == null) {
       return res.status(404).json({ message: 'Provider not found' });
     }
+
+    // Find addresses associated with this provider
+    const addresses = await Address.find({ userId: req.params.id });
+    provider.addresses = addresses; // Attach addresses to the provider object
+
     res.json(provider);
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -90,6 +98,7 @@ export const createProvider = async (req, res) => {
     res.status(201).json({
       message: 'Provider registered. OTP sent to your contact number for verification.',
       userId: newProvider._id,
+      token: generateToken(newProvider._id),
     });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -163,7 +172,7 @@ export const deleteProvider = async (req, res) => {
 // Get daily earnings for a provider
 export const getDailyEarnings = async (req, res) => {
   try {
-    const providerId = req.params.id; // Assuming provider ID is passed in params
+    const providerId = req.params.id;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -175,10 +184,11 @@ export const getDailyEarnings = async (req, res) => {
       provider: providerId,
       status: 'completed',
       createdAt: { $gte: today, $lt: tomorrow },
-    }).populate('service');
+    });
 
     const dailyEarnings = dailyBookings.reduce((sum, booking) => {
-      return sum + (booking.service ? booking.service.price : 0);
+      const bookingTotal = booking.services.reduce((bookingSum, serviceItem) => bookingSum + serviceItem.price, 0);
+      return sum + bookingTotal;
     }, 0);
 
     res.status(200).json({
@@ -195,7 +205,7 @@ export const getDailyEarnings = async (req, res) => {
 // Get monthly earnings for a provider
 export const getMonthlyEarnings = async (req, res) => {
   try {
-    const providerId = req.params.id; // Assuming provider ID is passed in params
+    const providerId = req.params.id;
 
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -208,10 +218,11 @@ export const getMonthlyEarnings = async (req, res) => {
       provider: providerId,
       status: 'completed',
       createdAt: { $gte: firstDayOfMonth, $lte: lastDayOfMonth },
-    }).populate('service');
+    });
 
     const monthlyEarnings = monthlyBookings.reduce((sum, booking) => {
-      return sum + (booking.service ? booking.service.price : 0);
+      const bookingTotal = booking.services.reduce((bookingSum, serviceItem) => bookingSum + serviceItem.price, 0);
+      return sum + bookingTotal;
     }, 0);
 
     res.status(200).json({
@@ -229,7 +240,7 @@ export const getMonthlyEarnings = async (req, res) => {
 // Set provider active status
 export const setProviderActiveStatus = async (req, res) => {
   try {
-    const providerId = req.params.id;
+    const providerId = req.user._id; // Get provider ID from authenticated user
     const { activeStatus } = req.body;
 
     const provider = await Provider.findByIdAndUpdate(

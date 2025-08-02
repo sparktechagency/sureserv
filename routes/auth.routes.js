@@ -7,7 +7,7 @@ import { createGoogleStrategy, createFacebookStrategy } from '../config/passport
 const router = express.Router();
 
 // PATCH to update user password
-router.patch('/:id/password', authenticate, updatePassword);
+router.patch('/password', authenticate, updatePassword);
 
 // POST to login user
 router.post('/login', login);
@@ -97,9 +97,9 @@ router.post('/reset-password', resetPassword);
 
 
 // POST to verify OTP
-router.post('/verify-otp', verifyOtp);
+router.post('/verify-otp', authenticate, verifyOtp);
 
 // POST to resend OTP
-router.post('/resend-otp', resendOtp);
+router.post('/resend-otp',authenticate, resendOtp);
 
 export default router;

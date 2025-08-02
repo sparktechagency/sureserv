@@ -8,11 +8,15 @@ import {
 } from '../controllers/service.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { upload } from '../config/multer.js';
+import { getMyServices } from '../controllers/service.controller.js';
 
 const router = express.Router();
 
 // Get all services (can be filtered by providerId)
 router.get('/', getServices);
+
+// Get services for the logged-in provider
+router.get('/me', authenticate, authorize('provider'), getMyServices);
 
 // Get a single service by ID
 router.get('/:id', getServiceById);

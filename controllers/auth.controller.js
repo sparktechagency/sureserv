@@ -14,14 +14,16 @@ export const generateToken = (id) => {
 
 
 
-// Verify OTP
+// Verify OTP for a logged-in user
 export const verifyOtp = async (req, res) => {
-  const { userId, otp } = req.body;
+  const { otp } = req.body;
+  const userId = req.user._id; // Get user ID from authenticated user
 
   try {
     const user = await User.findById(userId);
 
     if (!user) {
+      // This case should rarely happen due to the authenticate middleware
       return res.status(404).json({ message: 'User not found.' });
     }
 
@@ -43,7 +45,7 @@ export const verifyOtp = async (req, res) => {
 
 // Resend OTP
 export const resendOtp = async (req, res) => {
-  const { userId } = req.body;
+  const { userId } = req.body; // Get user ID from request body
 
   try {
     const user = await User.findById(userId);
@@ -116,7 +118,8 @@ export const logout = (req, res) => {
 // Update user password
 export const updatePassword = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const userId = req.user._id; // Get user ID from authenticated user
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -197,10 +200,18 @@ export const forgotPassword = async (req, res) => {
 
 // Reset password
 export const resetPassword = async (req, res) => {
-  const { resetCode, newPassword, newPasswordConfirm } = req.body;
+  const { token, password, passwordConfirm } = req.body;
+
+  if (!token || !password || !passwordConfirm) {
+    return res.status(400).json({ message: 'Please provide token, password, and password confirmation.' });
+  }
+
+  if (password !== passwordConfirm) {
+    return res.status(400).json({ message: 'Passwords do not match.' });
+  }
 
   try {
-    const hashedCode = crypto.createHash('sha256').update(resetCode).digest('hex');
+    const hashedCode = crypto.createHash('sha256').update(token).digest('hex');
 
     const user = await User.findOne({
       resetPasswordToken: hashedCode,
@@ -208,16 +219,12 @@ export const resetPassword = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Password reset code is invalid or has expired.' });
-    }
-
-    if (newPassword !== newPasswordConfirm) {
-      return res.status(400).json({ message: 'New passwords do not match.' });
+      return res.status(400).json({ message: 'Password reset token is invalid or has expired.' });
     }
 
     // Hash new password and save
     const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    user.password = await bcrypt.hash(password, salt);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 

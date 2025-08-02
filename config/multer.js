@@ -10,6 +10,8 @@ const storage = multer.diskStorage({
       uploadPath = path.join('uploads', 'service-images');
     } else if (file.fieldname === 'nid' || file.fieldname === 'license' || file.fieldname === 'addressprof') {
       uploadPath = path.join('uploads', 'documents');
+    } else if (file.fieldname === 'categoryImage') {
+      uploadPath = path.join('uploads', 'category-images');
     } else {
       cb(new Error('Invalid fieldname'), false);
       return;
@@ -26,6 +28,8 @@ const storage = multer.diskStorage({
       filenamePrefix = 'service-';
     } else if (file.fieldname === 'nid' || file.fieldname === 'license' || file.fieldname === 'addressprof') {
       filenamePrefix = 'document-';
+    } else if (file.fieldname === 'categoryImage') {
+      filenamePrefix = 'category-';
     } else {
       filenamePrefix = ''; // Default or handle error
     }
@@ -37,7 +41,7 @@ const fileFilter = (req, file, cb) => {
   const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
   const allowedPdfTypes = ['application/pdf'];
 
-  if (file.fieldname === 'profilePic' || file.fieldname === 'serviceImage') {
+  if (file.fieldname === 'profilePic' || file.fieldname === 'serviceImage' || file.fieldname === 'categoryImage') {
     allowedImageTypes.includes(file.mimetype)
       ? cb(null, true)
       : cb(new Error('Only JPEG/PNG/WEBP images allowed!'), false);

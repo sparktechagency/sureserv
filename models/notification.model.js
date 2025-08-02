@@ -12,7 +12,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['booking_confirmation', 'booking_status_update', 'general'],
+    enum: ['booking_confirmation', 'booking_status_update', 'general', 'new_order', 'booking_completed'],
     default: 'general',
   },
   read: {

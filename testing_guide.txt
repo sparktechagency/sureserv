@@ -36,7 +36,57 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
     ```
 *   **Notes:** Requires authentication. `YOUR_USER_ID` should be the ID of the authenticated user.
 
-### 1.3. Logout User
+### 1.3. Forgot Password
+
+*   **Purpose:** Request a password reset email.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/auth/forgot-password`
+*   **Body (JSON):**
+    ```json
+    {
+      "email": "user@example.com"
+    }
+    ```
+
+### 1.4. Reset Password
+
+*   **Purpose:** Reset a user's password with a token.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/auth/reset-password`
+*   **Body (JSON):**
+    ```json
+    {
+      "token": "RESET_TOKEN_FROM_EMAIL",
+      "password": "newsecurepassword"
+    }
+    ```
+
+### 1.5. Verify Phone Number (for logged-in user)
+
+*   **Purpose:** Verify the OTP sent to a logged-in user's phone.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/auth/verify-otp`
+*   **Body (JSON):**
+    ```json
+    {
+      "otp": "123456"
+    }
+    ```
+*   **Notes:** Requires authentication. The user ID is automatically detected from the token.
+
+### 1.6. Resend OTP
+
+*   **Purpose:** Resend an OTP to a user.
+*   **Method:** `POST`
+*   **URL:** `http://localhost:3000/api/v1/auth/resend-otp`
+*   **Body (JSON):**
+    ```json
+    {
+      "email": "user@example.com"
+    }
+    ```
+
+### 1.7. Logout User
 
 *   **Purpose:** Invalidate the current user session.
 *   **Method:** `POST`
@@ -75,23 +125,22 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
       "phone": "1234567890"
     }
     ```
-*   **Notes:** No authentication needed.
+*   **Notes:** No authentication needed. This will return a `userId`. You will need this for the next step.
 
-### 2.4. Update Customer Details
+
+
+### 2.5. Update Customer Details
 
 *   **Purpose:** Modify details of an existing customer.
 *   **Method:** `PUT`
 *   **URL:** `http://localhost:3000/api/v1/customers/YOUR_CUSTOMER_USER_ID`
-*   **Body (JSON):**
-    ```json
-    {
-      "name": "Updated Customer Name",
-      "phone": "0987654321"
-    }
-    ```
+*   **Body (Form-Data):**
+    *   `name`: `Updated Customer Name`
+    *   `phone`: `0987654321`
+    *   `profilePic`: (file)
 *   **Notes:** Requires authentication. Can update own profile.
 
-### 2.5. Delete a Customer
+### 2.6. Delete a Customer
 
 *   **Purpose:** Remove a customer account.
 *   **Method:** `DELETE`
@@ -107,48 +156,40 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
 *   **Purpose:** Retrieve a list of all provider accounts.
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/providers`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
 
 ### 3.2. Get Provider by ID
 
-*   **Purpose:** Retrieve details of a specific provider.
+*   **Purpose:** Retrieve details of a specific provider, including their saved addresses.
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/providers/YOUR_PROVIDER_USER_ID`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
 
 ### 3.3. Create a New Provider
 
-*   **Purpose:** Register a new provider account.
+*   **Purpose:** Register a new provider account. A token is returned immediately for instant login.
 *   **Method:** `POST`
 *   **URL:** `http://localhost:3000/api/v1/providers`
-*   **Body (JSON):**
-    ```json
-    {
-      "name": "New Provider",
-      "email": "new.provider@example.com",
-      "password": "securepassword",
-      "phone": "1122334455",
-      "nid": "1234567890",
-      "license": "PROV-LIC-001"
-    }
-    ```
-*   **Notes:** No authentication needed.
+*   **Body (Form-Data):**
+    *   `name`: `New Provider`
+    *   `email`: `new.provider@example.com`
+    *   `password`: `securepassword`
+    *   `phone`: `1122334455`
+    *   `profilePic`: (file)
+    *   `nid`: (file)
+    *   `license`: (file)
+    *   `addressprof`: (file)
+*   **Notes:** No authentication needed. The response will include a `userId` and a `token`.
 
 ### 3.4. Update Provider Details
 
 *   **Purpose:** Modify details of an existing provider.
 *   **Method:** `PUT`
 *   **URL:** `http://localhost:3000/api/v1/providers/YOUR_PROVIDER_USER_ID`
-*   **Body (JSON):**
-    ```json
-    {
-      "phone": "5544332211",
-      "availability": [
-        { "day": "Mon", "slots": ["09:00-12:00"] },
-        { "day": "Wed", "slots": ["14:00-17:00"] }
-      ]
-    }
-    ```
+*   **Body (Form-Data):**
+    *   `phone`: `5544332211`
+    *   `profilePic`: (file)
+    *   `nid`: (file)
+    *   `license`: (file)
+    *   `addressprof`: (file)
 *   **Notes:** Requires authentication. Provider can update their own profile.
 
 ### 3.5. Delete a Provider
@@ -194,14 +235,14 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
 *   **Purpose:** Retrieve all addresses associated with a specific user (customer or provider).
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/addresses/YOUR_USER_ID/getAllAddresses`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **Notes:** Requires authentication.
 
 ### 4.2. Get a Single Address by ID
 
 *   **Purpose:** Retrieve details of a specific address.
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/addresses/YOUR_ADDRESS_ID`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **Notes:** Requires authentication.
 
 ### 4.3. Create a New Address for a User
 
@@ -219,7 +260,7 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
       "isDefault": true
     }
     ```
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **Notes:** Requires authentication.
 
 ### 4.4. Update an Address by ID
 
@@ -233,14 +274,14 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
       "isDefault": false
     }
     ```
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **Notes:** Requires authentication.
 
 ### 4.5. Delete an Address by ID
 
 *   **Purpose:** Remove an address.
 *   **Method:** `DELETE`
 *   **URL:** `http://localhost:3000/api/v1/addresses/YOUR_ADDRESS_ID`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **Notes:** Requires authentication.
 
 ---
 
@@ -251,32 +292,33 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
 *   **Purpose:** Retrieve a list of all services. Can be filtered by `providerId` (e.g., `?providerId=YOUR_PROVIDER_ID`).
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/services`
-*   **Notes:** No authentication specified in routes.
 
-### 5.2. Get Service by ID
+### 5.2. Get My Services (Provider Only)
+
+*   **Purpose:** Retrieve a list of all services created by the logged-in provider.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/services/me`
+*   **Notes:** Requires authentication and `provider` role.
+
+### 5.3. Get Service by ID
 
 *   **Purpose:** Retrieve details of a specific service.
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/services/YOUR_SERVICE_ID`
-*   **Notes:** No authentication specified in routes.
 
 ### 5.3. Create a New Service
 
-*   **Purpose:** Add a new service offered by a provider.
+*   **Purpose:** Add a new service offered by the currently logged-in provider.
 *   **Method:** `POST`
 *   **URL:** `http://localhost:3000/api/v1/services`
-*   **Body (JSON):**
-    ```json
-    {
-      "providerId": "YOUR_PROVIDER_USER_ID",
-      "serviceName": "Electrical Wiring Installation",
-      "yearsOfExperience": 8,
-      "description": "Professional electrical wiring installation for residential and commercial properties.",
-      "price": 120,
-      "serviceImage": "https://example.com/electrical_service.jpg"
-    }
-    ```
-*   **Notes:** Requires authentication and `provider` role.
+*   **Body (Form-Data):**
+    *   `serviceName`: `Electrical Wiring Installation`
+    *   `yearsOfExperience`: `8`
+    *   `description`: `Professional electrical wiring installation for residential and commercial properties.`
+    *   `price`: `120`
+    *   `serviceImage`: (file)
+    *   `address`: `"123 Main St, Anytown, USA"`
+*   **Notes:** Requires authentication and `provider` role. The service will be automatically associated with the logged-in provider.
 
 ### 5.4. Update a Service
 
@@ -287,7 +329,8 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
     ```json
     {
       "price": 150,
-      "description": "Updated description for electrical wiring."
+      "description": "Updated description for electrical wiring.",
+      "address": "456 Oak Ave, Anytown, USA"
     }
     ```
 *   **Notes:** Requires authentication and `provider` role. Only the provider who owns the service can update it.
@@ -308,36 +351,83 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
 *   **Purpose:** Retrieve a list of all bookings.
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/bookings`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **Notes:** Requires authentication.
 
 ### 6.2. Get a Single Booking
 
 *   **Purpose:** Retrieve details of a specific booking.
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/bookings/YOUR_BOOKING_ID`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **Notes:** Requires authentication.
 
-### 6.3. Create a Booking
+### 6.3. Get Unpaid Bookings
 
-*   **Purpose:** Create a new booking.
+*   **Purpose:** Retrieve a list of all unpaid bookings.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/bookings/unpaid`
+*   **Notes:** Requires authentication.
+
+### 6.4. Get Bookings by User
+
+*   **Purpose:** Retrieve a list of all bookings for the logged-in user, optionally filtered by status.
+*   **Method:** `GET`
+*   **URL:**
+    *   To get all bookings for the user: `http://localhost:3000/api/v1/bookings/user`
+    *   To get bookings by status: `http://localhost:3000/api/v1/bookings/user?status=upcoming`
+*   **Notes:** Requires authentication. The user ID is automatically detected from the token. Valid statuses for filtering are `active`, `upcoming`, `completed`, `cancelled`.
+
+## 6. Order and Booking Management
+
+### 6.1. Create a New Order
+
+*   **Purpose:** Create a new order with multiple services from potentially multiple providers.
 *   **Method:** `POST`
-*   **URL:** `http://localhost:3000/api/v1/bookings`
+*   **URL:** `http://localhost:3000/api/v1/orders`
 *   **Body (JSON):**
     ```json
     {
-      "customer": "YOUR_CUSTOMER_USER_ID",
-      "provider": "YOUR_PROVIDER_USER_ID",
-      "service": "YOUR_SERVICE_ID",
+      "customerId": "YOUR_CUSTOMER_USER_ID",
+      "serviceIds": [
+        "SERVICE_ID_FROM_PROVIDER_A",
+        "SERVICE_ID_FROM_PROVIDER_B"
+      ],
       "date": "2025-09-15T10:00:00.000Z",
       "timeSlot": "10:00 AM - 12:00 PM",
-      "description": "Fix the leaky kitchen sink.",
-      "address": "123 Main St, Anytown",
-      "totalPrice": 75
+      "description": "Fix the leaky kitchen sink and replace the light fixture.",
+      "address": "YOUR_ADDRESS_ID"
     }
     ```
-*   **Notes:** Save the returned `_id` of the booking.
+*   **Notes:** The backend will create a parent `Order` and individual `Booking` documents for each provider. The response will contain the new `Order` object, which includes the details of the nested bookings and the calculated `totalAmount`.
 
-### 6.4. Update a Booking
+### 6.2. Get All Bookings
+
+*   **Purpose:** Retrieve a list of all bookings.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/bookings`
+*   **Notes:** Requires authentication.
+
+### 6.3. Get a Single Booking
+
+*   **Purpose:** Retrieve details of a specific booking.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/bookings/YOUR_BOOKING_ID`
+*   **Notes:** Requires authentication.
+
+### 6.4. Get Unpaid Bookings
+
+*   **Purpose:** Retrieve a list of all unpaid bookings.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/bookings/unpaid`
+*   **Notes:** Requires authentication.
+
+### 6.5. Get Bookings by User
+
+*   **Purpose:** Retrieve a list of all bookings for a specific user.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/bookings/user`
+*   **Notes:** Requires authentication.
+
+### 6.6. Update a Booking
 
 *   **Purpose:** Modify details of an existing booking (e.g., update status).
 *   **Method:** `PUT`
@@ -348,14 +438,34 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
       "status": "completed"
     }
     ```
-*   **Notes:** This will update the `totalEarnings` for the associated provider if status changes to `completed`.
+*   **Notes:** Requires authentication. Valid statuses are `active`, `upcoming`, `completed`, `cancelled`.
 
-### 6.5. Delete a Booking
+### 6.7. Delete a Booking
 
 *   **Purpose:** Remove a booking.
 *   **Method:** `DELETE`
 *   **URL:** `http://localhost:3000/api/v1/bookings/YOUR_BOOKING_ID`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **Notes:** Requires authentication.
+
+### 6.6. Update a Booking
+
+*   **Purpose:** Modify details of an existing booking (e.g., update status).
+*   **Method:** `PUT`
+*   **URL:** `http://localhost:3000/api/v1/bookings/YOUR_BOOKING_ID`
+*   **Body (JSON):**
+    ```json
+    {
+      "status": "completed"
+    }
+    ```
+*   **Notes:** Requires authentication.
+
+### 6.7. Delete a Booking
+
+*   **Purpose:** Remove a booking.
+*   **Method:** `DELETE`
+*   **URL:** `http://localhost:3000/api/v1/bookings/YOUR_BOOKING_ID`
+*   **Notes:** Requires authentication.
 
 ---
 
@@ -401,35 +511,37 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
 
 ### 8.1. Get All Reviews
 
-*   **Purpose:** Retrieve all reviews.
+*   **Purpose:** Retrieve all reviews. Can be filtered by service.
 *   **Method:** `GET`
-*   **URL:** `http://localhost:3000/api/v1/reviews`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
+*   **URL:** 
+    *   To get all reviews: `http://localhost:3000/api/v1/reviews`
+    *   To get reviews for a specific service: `http://localhost:3000/api/v1/reviews?service=YOUR_SERVICE_ID`
+*   **Notes:** When fetching by service, the response will include the customer's name and the full address from the associated booking. The review creation timestamp (`createdAt`) is included in the response for the frontend to format.
 
 ### 8.2. Get Single Review
 
 *   **Purpose:** Retrieve details of a specific review.
 *   **Method:** `GET`
 *   **URL:** `http://localhost:3000/api/v1/reviews/YOUR_REVIEW_ID`
-*   **Notes:** No authentication specified in routes, but typically would be authenticated.
 
 ### 8.3. Create a Review
 
-*   **Purpose:** Submit a review for a service.
+*   **Purpose:** Submit a review for a specific service within a completed booking.
 *   **Method:** `POST`
 *   **URL:** `http://localhost:3000/api/v1/reviews`
 *   **Body (JSON):**
     ```json
     {
-      "service": "YOUR_SERVICE_ID",
+      "bookingId": "YOUR_COMPLETED_BOOKING_ID",
+      "serviceId": "THE_SERVICE_ID_YOU_WANT_TO_REVIEW",
       "rating": 5,
       "comment": "Outstanding service! Very professional and efficient."
     }
     ```
 *   **Notes:**
     *   Requires authentication (customer user).
-    *   This will update the `averageRating` and `numberOfReviews` for the associated provider.
-    *   You can only review a service once per customer.
+    *   The booking status must be `completed`.
+    *   You can submit multiple reviews for the same booking, but each review must be for a different service within that booking.
 
 ### 8.4. Update Review
 
@@ -451,3 +563,21 @@ Most routes require authentication. Ensure you have a valid JWT token and includ
 *   **Method:** `DELETE`
 *   **URL:** `http://localhost:3000/api/v1/reviews/YOUR_REVIEW_ID`
 *   **Notes:** Requires authentication. Only the customer who created the review can delete it.
+
+---
+
+## 9. Notification Management
+
+### 9.1. Get My Notifications
+
+*   **Purpose:** Retrieve notifications for the authenticated user.
+*   **Method:** `GET`
+*   **URL:** `http://localhost:3000/api/v1/notifications/me`
+*   **Notes:** Requires authentication.
+
+### 9.2. Mark Notification as Read
+
+*   **Purpose:** Mark a notification as read.
+*   **Method:** `PATCH`
+*   **URL:** `http://localhost:3000/api/v1/notifications/YOUR_NOTIFICATION_ID/read`
+*   **Notes:** Requires authentication.

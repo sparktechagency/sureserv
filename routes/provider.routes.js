@@ -33,6 +33,6 @@ router.delete('/:id', authenticate, authorize('admin'), deleteProvider);
 // Provider statistics and status
 router.get('/:id/earnings/daily', authenticate, getDailyEarnings);
 router.get('/:id/earnings/monthly', authenticate, getMonthlyEarnings);
-router.put('/:id/status', authenticate, setProviderActiveStatus);
+router.put('/status', authenticate, setProviderActiveStatus);
 
 export default router;

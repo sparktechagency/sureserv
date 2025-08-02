@@ -1,36 +1,48 @@
 import Review from '../models/review.model.js';
 import Service from '../models/service.model.js';
 import Provider from '../models/provider.model.js';
+import Booking from '../models/booking.model.js';
 
 // Create a new review
 export const createReview = async (req, res) => {
   try {
-    const { service: serviceId, rating, comment } = req.body;
-    const customerId = req.user.id; // Assuming req.user.id is populated by authentication middleware
-    console.log('Creating review for service:', serviceId, 'by customer:', customerId);
+    const { bookingId, serviceId, rating, comment } = req.body;
+    const customerId = req.user.id;
 
-    const service = await Service.findById(serviceId);
+    const booking = await Booking.findById(bookingId);
 
-    if (!service) {
-      return res.status(404).json({ success: false, message: 'Service not found' });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // Check if a review already exists for this service by this customer
-    const existingReview = await Review.findOne({ service: serviceId, customer: customerId });
+    if (booking.customer.toString() !== customerId) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to review this booking.' });
+    }
+
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ success: false, message: 'You can only review completed bookings.' });
+    }
+
+    const serviceExistsInBooking = booking.services.some(s => s.service.toString() === serviceId);
+    if (!serviceExistsInBooking) {
+        return res.status(400).json({ success: false, message: 'The specified service is not part of this booking.' });
+    }
+
+    const existingReview = await Review.findOne({ booking: bookingId, service: serviceId });
     if (existingReview) {
-      return res.status(400).json({ success: false, message: 'You have already reviewed this service.' });
+      return res.status(400).json({ success: false, message: 'You have already reviewed this service for this booking.' });
     }
 
     const review = await Review.create({
+      booking: bookingId,
       service: serviceId,
       customer: customerId,
-      provider: service.providerId,
+      provider: booking.provider,
       rating,
       comment,
     });
 
-    // Update provider's average rating and number of reviews
-    await calculateAverageRating(service.providerId);
+    await calculateAverageRating(booking.provider);
 
     res.status(201).json({
       success: true,
@@ -73,7 +85,25 @@ async function calculateAverageRating(providerId) {
 // Get all reviews
 export const getReviews = async (req, res) => {
   try {
-    const reviews = await Review.find().populate('customer').populate('provider').populate('service');
+    let filter = {};
+    if (req.query.service) {
+      filter.service = req.query.service;
+    }
+
+    const reviews = await Review.find(filter)
+      .populate({
+        path: 'customer',
+        select: 'firstName lastName' // Select specific fields from the User model
+      })
+      .populate({
+        path: 'booking',
+        select: 'address', // Select the address field from the Booking
+        populate: {
+          path: 'address', // Populate the address reference within the booking
+          model: 'Address'
+        }
+      });
+
     res.status(200).json({
       success: true,
       count: reviews.length,

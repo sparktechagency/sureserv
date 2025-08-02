@@ -19,10 +19,12 @@ import serviceRoutes from './routes/service.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import { stripeWebhook } from './controllers/payment.controller.js';
 import reviewRoutes from './routes/review.routes.js';
+import orderRoutes from './routes/order.routes.js';
 
 
 import bookingRoutes from './routes/booking.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 //import './utils/scheduler.js'; // Import to start cron jobs
 import path from 'path';
@@ -76,8 +78,10 @@ app.use('/api/v1/addresses', addressRoutes);
 app.use('/api/v1/services', serviceRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 
 

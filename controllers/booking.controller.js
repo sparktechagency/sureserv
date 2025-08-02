@@ -6,73 +6,60 @@ import { createNotification } from '../controllers/notification.controller.js';
 // Create a new booking
 export const createBooking = async (req, res) => {
   try {
-    const { bookings: bookingRequests } = req.body;
+    const { customer, provider, services, date, timeSlot, description, address, isUrgent, coupon } = req.body;
 
-    if (!Array.isArray(bookingRequests)) {
+    if (!customer || !provider || !services || !date || !address) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Expected an array of bookings in the request body' 
+        message: 'Customer, provider, services, date, and address are required.' 
       });
     }
 
-    const processedBookings = [];
-    
-    // Process each booking request
-    for (const request of bookingRequests) {
-      const { service: serviceId, addOns } = request;
+    const serviceIds = services.map(s => s.service);
+    const serviceDocs = await Service.find({ '_id': { $in: serviceIds } });
 
-      const service = await Service.findById(serviceId);
-      if (!service) {
-        processedBookings.push({
-          success: false,
-          message: `Service not found for ID: ${serviceId}`,
-          request
-        });
-        continue;
-      }
-
-      let calculatedTotalPrice = service.price;
-
-      if (addOns && Array.isArray(addOns)) {
-        calculatedTotalPrice += addOns.reduce((sum, item) => sum + (item.price || 0), 0);
-      }
-
-      request.totalPrice = calculatedTotalPrice;
-
-      try {
-        const booking = await Booking.create(request);
-        
-        // Populate customer and service details for notification
-        const populatedBooking = await Booking.findById(booking._id)
-          .populate('customer')
-          .populate('service');
-
-        // Create booking confirmation notification for customer
-        if (populatedBooking.customer) {
-          const message = `Your booking for ${populatedBooking.service.name} on ${populatedBooking.date.toDateString()} at ${populatedBooking.timeSlot} has been successfully created.`;
-          await createNotification(populatedBooking.customer._id, message, 'booking_confirmation');
-        }
-
-        processedBookings.push({
-          success: true,
-          data: booking
-        });
-      } catch (error) {
-        processedBookings.push({
-          success: false,
-          message: error.message,
-          request
-        });
-      }
+    if (serviceDocs.length !== serviceIds.length) {
+      return res.status(404).json({ message: 'One or more services not found.' });
     }
 
-    // Check if all bookings succeeded
-    const allSuccess = processedBookings.every(b => b.success);
-    
-    res.status(allSuccess ? 201 : 207).json({
-      success: !processedBookings.some(b => !b.success),
-      data: processedBookings
+    let subtotal = 0;
+    const serviceItems = serviceDocs.map(doc => {
+      subtotal += doc.price;
+      return { service: doc._id, price: doc.price };
     });
+
+    const tax = subtotal * 0.10; // 10% tax
+    const totalPrice = subtotal + tax;
+
+    const booking = new Booking({
+      customer,
+      provider,
+      services: serviceItems,
+      date,
+      timeSlot,
+      description,
+      address,
+      isUrgent,
+      coupon,
+      subtotal,
+      tax,
+      totalPrice,
+    });
+
+    const newBooking = await booking.save();
+
+    // Create booking confirmation notification for customer
+    const populatedBooking = await Booking.findById(newBooking._id).populate('customer');
+    if (populatedBooking.customer) {
+      const message = `Your booking for ${serviceDocs.length} services on ${new Date(date).toDateString()} has been successfully created.`;
+      await createNotification(populatedBooking.customer._id, message, 'booking_confirmation');
+    }
+
+    res.status(201).json({
+      success: true,
+      data: newBooking
+    });
+
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -80,12 +67,24 @@ export const createBooking = async (req, res) => {
 
 // Get all bookings
 export const getBookings = async (req, res) => {
-  try {
-    const bookings = await Booking.find();
+   try {
+    const userId = req.user._id;
+    
+    const bookings = await Booking.find({ 
+      $or: [{ customer: userId }, { provider: userId }] 
+    }).populate('orderId');
+    
+    // Filter unpaid bookings
+    const unpaidBookings = bookings.filter(booking => {
+      return !booking.orderId || 
+             booking.orderId.paymentStatus !== 'paid' ||
+             booking.orderId.paymentStatus === 'unpaid'
+    });
+    
     res.status(200).json({
       success: true,
-      count: bookings.length,
-      data: bookings,
+      count: unpaidBookings.length,
+      data: unpaidBookings,
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -111,7 +110,7 @@ export const getBooking = async (req, res) => {
 // Update a booking
 export const updateBooking = async (req, res) => {
   try {
-    let booking = await Booking.findById(req.params.id).populate('service').populate('customer').populate('provider');
+    let booking = await Booking.findById(req.params.id).populate('services.service').populate('customer').populate('provider');
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
@@ -121,14 +120,18 @@ export const updateBooking = async (req, res) => {
 
     // Check if status is being updated to 'completed'
     if (newStatus === 'completed' && oldStatus !== 'completed') {
-      if (booking.service && booking.service.price) {
-        await Provider.findByIdAndUpdate(
-          booking.provider,
-          { $inc: { totalEarnings: booking.service.price } },
-          { new: true }
-        );
-      } else {
-        console.warn(`Service or price not found for booking ${booking._id}. Total earnings not updated.`);
+      const bookingSubtotal = booking.services.reduce((sum, item) => sum + item.price, 0);
+      
+      await Provider.findByIdAndUpdate(
+        booking.provider,
+        { $inc: { totalEarnings: bookingSubtotal } }, // Use calculated subtotal for earnings
+        { new: true }
+      );
+
+      // Notify admins about completed booking
+      const admins = await getAdminUsers();
+      for (const admin of admins) {
+          await createNotification(admin._id, `Booking ${booking._id} completed by provider ${booking.provider.firstName} ${booking.provider.lastName || ''}.`, 'booking_completed');
       }
     }
 
@@ -140,19 +143,20 @@ export const updateBooking = async (req, res) => {
     // Create notification if booking status changes
     if (newStatus && newStatus !== oldStatus) {
       let message = '';
+      const serviceNames = booking.services.map(s => s.service.serviceName).join(', ');
 
       switch (newStatus) {
-        case 'confirmed':
-          message = `Your booking for ${booking.service.name} on ${booking.date.toDateString()} at ${booking.timeSlot} has been CONFIRMED by the provider.`;
+        case 'active':
+          message = `Your booking for ${serviceNames} on ${booking.date.toDateString()} at ${booking.timeSlot} is now ACTIVE.`;
+          break;
+        case 'completed':
+          message = `Your booking for ${serviceNames} on ${booking.date.toDateString()} at ${booking.timeSlot} has been marked as COMPLETED.`;
           break;
         case 'cancelled':
-          message = `Your booking for ${booking.service.name} on ${booking.date.toDateString()} at ${booking.timeSlot} has been CANCELLED.`;
-          break;
-        case 'rejected':
-          message = `Unfortunately, your booking for ${booking.service.name} on ${booking.date.toDateString()} at ${booking.timeSlot} has been REJECTED by the provider.`;
+          message = `Your booking for ${serviceNames} on ${booking.date.toDateString()} at ${booking.timeSlot} has been CANCELLED.`;
           break;
         default:
-          message = `The status of your booking for ${booking.service.name} on ${booking.date.toDateString()} at ${booking.timeSlot} has been updated to ${newStatus.toUpperCase()}.`;
+          message = `The status of your booking for ${serviceNames} on ${booking.date.toDateString()} at ${booking.timeSlot} has been updated to ${newStatus.toUpperCase()}.`;
           break;
       }
 
@@ -204,8 +208,42 @@ export const getUnpaidBookings = async (req, res) => {
 // Get all bookings by user
 export const getBookingsByUser = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const bookings = await Booking.find({ $or: [{ customer: userId }, { provider: userId }] });
+    const userId = req.user._id;
+    const { status } = req.query; // Get status from query parameters
+
+    let filter = { $or: [{ customer: userId }, { provider: userId }] };
+
+    if (status) {
+      filter.status = status; // Add status to filter if provided
+    }
+
+    const bookings = await Booking.find(filter);
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const getBookingsByProvider = async (req, res) => {
+  try {
+    const providerId = req.user._id;
+    const { status } = req.query; // Get status from query parameters
+
+    let filter = { provider: providerId };
+
+    if (status) {
+      filter.status = status; // Add status to filter if provided
+    }
+
+    const bookings = await Booking.find(filter)
+      .populate('customer', 'firstName lastName email')
+      .populate('services.service', 'serviceName category subcategory')
+      .sort({ createdAt: -1 });
+
     res.status(200).json({
       success: true,
       count: bookings.length,

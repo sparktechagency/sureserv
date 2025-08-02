@@ -1,4 +1,5 @@
 import Notification from '../models/notification.model.js';
+import User from '../models/user.model.js';
 
 // Create a new notification
 export const createNotification = async (userId, message, type) => {
@@ -13,6 +14,17 @@ export const createNotification = async (userId, message, type) => {
   } catch (error) {
     console.error('Error creating notification:', error);
     throw new Error('Could not create notification.');
+  }
+};
+
+// Get all admin users
+export const getAdminUsers = async () => {
+  try {
+    const admins = await User.find({ role: 'admin' });
+    return admins;
+  } catch (error) {
+    console.error('Error fetching admin users:', error);
+    return [];
   }
 };
 

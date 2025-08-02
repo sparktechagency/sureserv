@@ -27,7 +27,7 @@ export const getAddressById = async (req, res) => {
 // Create a new address for a user
 export const createAddress = async (req, res) => {
   const { title, locationAddress, locationDescription } = req.body;
-  const userId = req.params.userId;
+  const userId = req.user._id; // Get user ID from authenticated user
 
   if (!title || !locationAddress) {
     return res.status(400).json({ message: 'Title and location address are required' });

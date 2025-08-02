@@ -1,7 +1,9 @@
 import Customer from '../models/customer.model.js';
+import Address from '../models/address.model.js';
 import bcrypt from 'bcryptjs';
 import { sendSMS } from '../utils/twilio.js';
 import User from '../models/user.model.js';
+import { generateToken } from './auth.controller.js';
 
 // Get all customers
 export const getCustomers = async (req, res) => {
@@ -16,10 +18,15 @@ export const getCustomers = async (req, res) => {
 // Get customer by ID
 export const getCustomerById = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findById(req.params.id).lean(); // Use .lean() for a plain object
     if (customer == null) {
       return res.status(404).json({ message: 'Customer not found' });
     }
+
+    // Find addresses associated with this customer
+    const addresses = await Address.find({ userId: req.params.id });
+    customer.addresses = addresses; // Attach addresses to the customer object
+
     res.json(customer);
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -66,11 +73,42 @@ export const createCustomer = async (req, res) => {
     res.status(201).json({
       message: 'Customer registered. OTP sent to your contact number for verification.',
       userId: newCustomer._id,
+      token: generateToken(newCustomer._id),
     });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 };
+
+ // Verify OTP
+// export const verifyOtp = async (req, res) => {
+//   const { userId, otp } = req.body;
+
+//   try {
+//     const user = await User.findById(userId);
+
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found.' });
+//     }
+
+//     if (user.otp !== otp || user.otpExpires < Date.now()) {
+//       return res.status(400).json({ message: 'Invalid or expired OTP.' });
+//     }
+
+//     user.phoneVerified = true;
+//     user.otp = undefined;
+//     user.otpExpires = undefined;
+//     await user.save();
+
+//     res.status(200).json({
+//       message: 'Phone number verified successfully.',
+//       token: generateToken(user._id),
+//     });
+
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 
 // Update customer
 export const updateCustomer = async (req, res) => {

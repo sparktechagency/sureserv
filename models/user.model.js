@@ -70,6 +70,11 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: Date,
   otp: String,
   otpExpires: Date,
+  status: {
+    type: String,
+    enum: ['active', 'suspended', 'blocked'],
+    default: 'active',
+  },
 });
 
 const User = mongoose.model('User', userSchema);
