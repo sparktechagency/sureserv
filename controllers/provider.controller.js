@@ -5,7 +5,7 @@ import Booking from '../models/booking.model.js';
 import { sendSMS } from '../utils/twilio.js';
 import User from '../models/user.model.js';
 
-import { generateToken } from './auth.controller.js';
+import { generateToken, generateRefreshToken } from './auth.controller.js';
 
 // Get all providers
 export const getProviders = async (req, res) => {
@@ -95,10 +95,17 @@ export const createProvider = async (req, res) => {
     const message = `Your SureServ verification code is ${otp}. It is valid for 10 minutes.`;
     await sendSMS(contactNumber, message);
 
+    const accessToken = generateToken(newProvider._id);
+    const refreshToken = generateRefreshToken(newProvider._id);
+
+    newProvider.refreshToken = refreshToken;
+    await newProvider.save();
+
     res.status(201).json({
       message: 'Provider registered. OTP sent to your contact number for verification.',
       userId: newProvider._id,
-      token: generateToken(newProvider._id),
+      accessToken,
+      refreshToken,
     });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -108,7 +115,8 @@ export const createProvider = async (req, res) => {
 // Update provider
 export const updateProvider = async (req, res) => {
   try {
-    const provider = await Provider.findById(req.params.id);
+    const userId = req.user._id; // Get provider ID from authenticated user
+    const provider = await Provider.findById(userId);
     if (provider == null) {
       return res.status(404).json({ message: 'Provider not found' });
     }

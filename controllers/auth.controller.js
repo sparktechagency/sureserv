@@ -12,6 +12,35 @@ export const generateToken = (id) => {
   });
 };
 
+// Generate Refresh Token
+export const generateRefreshToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '7d',
+  });
+};
+
+// Refresh Token
+export const refreshToken = async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Refresh token not provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.refreshToken !== token) {
+      return res.status(403).json({ message: 'Invalid refresh token' });
+    }
+
+    const accessToken = generateToken(user._id);
+    res.json({ accessToken });
+  } catch (err) {
+    res.status(403).json({ message: 'Invalid refresh token' });
+  }
+};
 
 
 // Verify OTP for a logged-in user
@@ -97,6 +126,12 @@ export const login = async (req, res) => {
     return res.status(400).json({ message: 'Invalid credentials' });
   }
 
+  const accessToken = generateToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
   res.json({
     _id: user._id,
     firstName: user.firstName,
@@ -104,15 +139,32 @@ export const login = async (req, res) => {
     email: user.email,
     contactNumber: user.contactNumber,
     role: user.role,
-    token: generateToken(user._id),
+    accessToken,
+    refreshToken,
   });
 };
 
-// Logout User (for stateless JWTs, client-side token removal is key)
-export const logout = (req, res) => {
-  // For stateless JWTs, simply inform the client to remove the token.
-  // No server-side action is typically needed unless you implement a token blacklist.
-  res.json({ message: 'Logged out successfully' });
+// Logout User
+export const logout = async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ message: 'Token not provided' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (user) {
+      user.refreshToken = undefined;
+      await user.save();
+    }
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    res.status(400).json({ message: 'Invalid token' });
+  }
 };
 
 // Update user password

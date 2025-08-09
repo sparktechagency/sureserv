@@ -26,6 +26,8 @@ import bookingRoutes from './routes/booking.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 
+import siteContentRoutes from './routes/siteContent.routes.js';
+
 //import './utils/scheduler.js'; // Import to start cron jobs
 import path from 'path';
 
@@ -82,6 +84,7 @@ app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/site-content', siteContentRoutes);
 
 
 

@@ -42,7 +42,7 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["active", "upcoming", "completed", "rejected"],
+    enum: ["accepted", "upcoming", "completed", "rejected"],
     default: "upcoming"
   },
   isUrgent: {

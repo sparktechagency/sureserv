@@ -1,5 +1,5 @@
 import express from 'express';
-import { updatePassword, login, logout, generateToken, forgotPassword, resetPassword, verifyOtp, resendOtp } from '../controllers/auth.controller.js';
+import { updatePassword, login, logout, generateToken, forgotPassword, resetPassword, verifyOtp, resendOtp, refreshToken } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import passport from 'passport';
 import { createGoogleStrategy, createFacebookStrategy } from '../config/passport.js';
@@ -11,6 +11,9 @@ router.patch('/password', authenticate, updatePassword);
 
 // POST to login user
 router.post('/login', login);
+
+// POST to refresh token
+router.post('/refresh-token', refreshToken);
 
 // POST to logout user
 router.post('/logout', logout);

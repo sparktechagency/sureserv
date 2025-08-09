@@ -32,7 +32,7 @@ router.post('/', upload.fields([{ name: 'profilePic', maxCount: 1 }, { name: 'ni
 router.get('/:id', getProviderById);
 
 // PUT to update a provider (Authenticated provider can update their own profile)
-router.put('/:id', authenticate, upload.fields([{ name: 'profilePic', maxCount: 1 }, { name: 'nid', maxCount: 1 }, { name: 'license', maxCount: 1 }, { name: 'addressprof', maxCount: 1 }]), updateProvider);
+router.put('/', authenticate, upload.fields([{ name: 'profilePic', maxCount: 1 }, { name: 'nid', maxCount: 1 }, { name: 'license', maxCount: 1 }, { name: 'addressprof', maxCount: 1 }]), updateProvider);
 
 // DELETE a provider (Admin only)
 router.delete('/:id', authenticate, authorize('admin'), deleteProvider);

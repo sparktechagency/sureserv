@@ -3,7 +3,7 @@ import Address from '../models/address.model.js';
 import bcrypt from 'bcryptjs';
 import { sendSMS } from '../utils/twilio.js';
 import User from '../models/user.model.js';
-import { generateToken } from './auth.controller.js';
+import { generateToken, generateRefreshToken } from './auth.controller.js';
 
 // Get all customers
 export const getCustomers = async (req, res) => {
@@ -70,10 +70,17 @@ export const createCustomer = async (req, res) => {
     const message = `Your SureServ verification code is ${otp}. It is valid for 10 minutes.`;
     await sendSMS(contactNumber, message);
 
+    const accessToken = generateToken(newCustomer._id);
+    const refreshToken = generateRefreshToken(newCustomer._id);
+
+    newCustomer.refreshToken = refreshToken;
+    await newCustomer.save();
+
     res.status(201).json({
       message: 'Customer registered. OTP sent to your contact number for verification.',
       userId: newCustomer._id,
-      token: generateToken(newCustomer._id),
+      accessToken,
+      refreshToken,
     });
   } catch (err) {
     res.status(400).json({ message: err.message });
