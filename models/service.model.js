@@ -16,6 +16,7 @@ const serviceSchema = new mongoose.Schema({
   },
   subcategory: {
     type: String,
+    required: true,
   },
   yearsOfExperience: {
     type: Number,

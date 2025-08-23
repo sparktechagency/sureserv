@@ -5,6 +5,7 @@ import {
   createService,
   updateService,
   deleteService,
+  getServiceCategoriesAndSubcategories,
 } from '../controllers/service.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { upload } from '../config/multer.js';
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // Get all services (can be filtered by providerId)
 router.get('/', getServices);
+
+// Get all unique categories and subcategories
+router.get('/categories', getServiceCategoriesAndSubcategories);
 
 // Get services for the logged-in provider
 router.get('/me', authenticate, authorize('provider'), getMyServices);

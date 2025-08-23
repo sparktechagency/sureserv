@@ -3,11 +3,26 @@ import Provider from '../models/provider.model.js';
 
 // Get all services (can be filtered by providerId)
 export const getServices = async (req, res) => {
-   const { category, subcategory } = req.query;
+  const { category, subcategory, search } = req.query;
   try {
     const filter = {};
-    if (category) filter.category = category;
-  if (subcategory) filter.subcategory = subcategory;
+
+    if (category) {
+      filter.category = category;
+    }
+    if (subcategory) {
+      filter.subcategory = subcategory;
+    }
+
+    if (search) {
+      const searchRegex = new RegExp(search, 'i'); // 'i' for case-insensitive
+      filter.$or = [
+        { serviceName: { $regex: searchRegex } },
+        { description: { $regex: searchRegex } },
+        { category: { $regex: searchRegex } },
+        { subcategory: { $regex: searchRegex } },
+      ];
+    }
 
     const services = await Service.find(filter);
     res.json(services);
@@ -132,5 +147,18 @@ export const getMyServices = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Get all unique categories and subcategories
+export const getServiceCategoriesAndSubcategories = async (req, res) => {
+  try {
+    const [categories, subcategories] = await Promise.all([
+      Service.distinct('category'),
+      Service.distinct('subcategory'),
+    ]);
+    res.json({ categories, subcategories });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

@@ -146,14 +146,14 @@ export const login = async (req, res) => {
 
 // Logout User
 export const logout = async (req, res) => {
-  const { token } = req.body;
+  const { refreshToken } = req.body;
 
-  if (!token) {
+  if (!refreshToken) {
     return res.status(400).json({ message: 'Token not provided' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
     if (user) {
